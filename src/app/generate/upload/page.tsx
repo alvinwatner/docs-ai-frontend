@@ -35,7 +35,7 @@ export default function UploadPage() {
 }
 
 function UploadContent() {
-  const { user } = useUser();
+  const { } = useUser();
   const router = useRouter();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -99,7 +99,7 @@ function UploadContent() {
       try {
         sessionStorage.setItem('uploaded-file', JSON.stringify(fileInfo));
         sessionStorage.setItem('detected-variables', JSON.stringify(variables));
-      } catch (storageError) {
+      } catch {
         throw new Error('File too large for storage. Please use a smaller file (recommended: under 5MB).');
       }
 
@@ -113,7 +113,7 @@ function UploadContent() {
     } finally {
       setIsUploading(false);
     }
-  }, [router]);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -330,7 +330,7 @@ function UploadContent() {
                         <div>
                           <h4 className="font-medium text-orange-900">No Variables Detected</h4>
                           <p className="text-sm text-orange-700">
-                            We couldn't find any variables in your template. Variables should be formatted as {`{{variable_name}}`}.
+                            We couldn&apos;t find any variables in your template. Variables should be formatted as {`{{variable_name}}`}.
                           </p>
                         </div>
                       </div>

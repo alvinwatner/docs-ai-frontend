@@ -43,10 +43,10 @@ export interface ButtonProps
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant, size, loading, disabled, children, asChild, ...props },
+    { className, variant, size, loading, disabled, children, asChild: _, ...props },
     ref
   ) => {
-    // Filter out asChild from props since it's not a valid DOM attribute
+    // asChild is filtered out with underscore prefix to satisfy linter
     return (
       <button
         className={cn(buttonVariants({ variant, size, className }))}

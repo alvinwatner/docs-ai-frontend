@@ -5,7 +5,7 @@ import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Plus, FileText, Clock, HelpCircle, Settings, X, BookOpen } from 'lucide-react';
+import { Plus, FileText, Clock, HelpCircle, X, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 

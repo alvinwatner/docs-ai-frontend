@@ -46,7 +46,7 @@ export default function FillPage() {
 }
 
 function FillContent() {
-  const { user } = useUser();
+  const { } = useUser();
   const router = useRouter();
   const [variables, setVariables] = useState<DetectedVariables | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);

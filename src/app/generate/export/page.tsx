@@ -25,7 +25,12 @@ interface UploadedFile {
 }
 
 interface VariableValues {
-  [key: string]: any;
+  [key: string]: string | SectionData[];
+}
+
+interface SectionData {
+  title: string;
+  table_rows: Array<{ key: string; value: string }>;
 }
 
 export default function ExportPage() {
@@ -37,7 +42,7 @@ export default function ExportPage() {
 }
 
 function ExportContent() {
-  const { user } = useUser();
+  const { } = useUser();
   const router = useRouter();
   const [variables, setVariables] = useState<DetectedVariables | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
@@ -336,7 +341,7 @@ function ExportContent() {
                     </h3>
                     <p className="text-muted-foreground text-sm">
                       Document preview will be available in a future update. 
-                      Click "Generate Document" to create and download your file.
+                      Click &quot;Generate Document&quot; to create and download your file.
                     </p>
                   </div>
                 </CardContent>
