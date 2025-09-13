@@ -113,3 +113,59 @@ p {
   overflow-wrap: break-word;
   hyphens: auto;
 }
+
+/* DOCX Preview Styling */
+.docx-preview-container {
+  font-family: 'Calibri', 'Arial', sans-serif;
+  line-height: 1.15;
+  color: #000000;
+  overflow: visible;
+  height: auto;
+}
+
+.docx-preview-container .docx {
+  background: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  margin: 0 auto;
+  padding: 0;
+  height: auto;
+}
+
+.docx-preview-container .docx-wrapper {
+  background: white;
+  padding: 1in;
+  width: 8.5in;
+  margin: 0 auto;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  height: auto;
+  overflow: visible;
+}
+
+.docx-preview-container p {
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+}
+
+.docx-preview-container table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.docx-preview-container td,
+.docx-preview-container th {
+  border: 1px solid #000000;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.docx-preview-container .page-break {
+  page-break-before: always;
+  break-before: page;
+}
+
+/* Ensure docx-preview renders full content */
+.docx-preview-container > * {
+  height: auto !important;
+  overflow: visible !important;
+}

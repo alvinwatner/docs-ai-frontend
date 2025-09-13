@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useUser } from '@auth0/nextjs-auth0';
 import { AuthGuard } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import {
   Search,
   Book,
   FileText,
-  HelpCircle,
   Video,
   Download,
   ArrowLeft,
@@ -22,7 +20,6 @@ import {
   Zap,
   Upload,
   Edit3,
-  CheckCircle,
   AlertCircle,
   ChevronRight,
   Layers,
@@ -40,7 +37,6 @@ export default function HelpPage() {
 }
 
 function HelpContent() {
-  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
 

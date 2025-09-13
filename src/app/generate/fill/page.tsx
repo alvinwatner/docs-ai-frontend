@@ -53,6 +53,7 @@ function FillContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [variableValues, setVariableValues] = useState<VariableValues>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isPerformingMerge, setIsPerformingMerge] = useState(false);
 
   useEffect(() => {
     // Retrieve stored data from previous steps
@@ -236,14 +237,91 @@ function FillContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!validateForm()) {
       return;
     }
-    
-    // Store filled values for the next step
-    sessionStorage.setItem('variable-values', JSON.stringify(variableValues));
-    router.push('/generate/export');
+
+    setIsPerformingMerge(true);
+
+    try {
+      // Store filled values for the next step
+      sessionStorage.setItem('variable-values', JSON.stringify(variableValues));
+
+      // Trigger early merge for preview
+      await performEarlyMerge();
+
+      router.push('/generate/export');
+    } catch (error) {
+      console.error('Error during merge:', error);
+      // Don't block navigation even if early merge fails
+      router.push('/generate/export');
+    } finally {
+      setIsPerformingMerge(false);
+    }
+  };
+
+  // Helper function to convert base64 to File object
+  const base64ToFile = (base64String: string, filename: string): File => {
+    const arr = base64String.split(',');
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  const performEarlyMerge = async () => {
+    try {
+      const storedFile = sessionStorage.getItem('uploaded-file');
+      if (!storedFile || !variableValues) return;
+
+      const parsedFileInfo: UploadedFile & { base64?: string } = JSON.parse(storedFile);
+
+      if (!parsedFileInfo.base64) {
+        console.warn('No file data found for early merge');
+        return;
+      }
+
+      // Convert base64 to File object
+      const originalFile = base64ToFile(parsedFileInfo.base64, parsedFileInfo.name);
+
+      // Prepare form data for merge API
+      const mergeFormData = new FormData();
+      mergeFormData.append('file', originalFile);
+      mergeFormData.append('variables', JSON.stringify(variableValues));
+
+      // Call merge API
+      const mergeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/merge-variables`, {
+        method: 'POST',
+        body: mergeFormData,
+      });
+
+      if (!mergeResponse.ok) {
+        console.warn('Early merge failed:', mergeResponse.statusText);
+        return;
+      }
+
+      // Store merged document blob
+      const mergedBlob = await mergeResponse.blob();
+
+      // Convert blob to base64 for storage
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Data = reader.result as string;
+        // Store as JSON object to match export page expectation
+        sessionStorage.setItem('merged-document', JSON.stringify({ data: base64Data }));
+        console.log('Successfully stored merged document for preview');
+      };
+      reader.readAsDataURL(mergedBlob);
+
+    } catch (error) {
+      console.warn('Early merge failed:', error);
+      // Don't block navigation if early merge fails
+    }
   };
 
   const handleGoBack = () => {
@@ -468,13 +546,23 @@ function FillContent() {
 
             {/* Continue Button */}
             <div className="flex justify-center pt-6">
-              <Button 
+              <Button
                 onClick={handleContinue}
+                disabled={isPerformingMerge}
                 size="lg"
                 className="flex items-center gap-2"
               >
-                Continue to Export
-                <ArrowRight className="h-4 w-4" />
+                {isPerformingMerge ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                    Merging & Preparing Preview...
+                  </>
+                ) : (
+                  <>
+                    Continue to Export
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>

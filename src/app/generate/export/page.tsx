@@ -7,7 +7,8 @@ import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
-import { ArrowLeft, Download, FileText, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
+import { DocumentPreview } from '@/components/document-preview';
+import { ArrowLeft, Download, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -55,12 +56,15 @@ function ExportContent() {
   const [exportSuccess, setExportSuccess] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState('');
   const [exportStep, setExportStep] = useState<'idle' | 'merging' | 'formatting' | 'downloading'>('idle');
+  const [mergedDocumentBlob, setMergedDocumentBlob] = useState<Blob | null>(null);
+  const [previewError, setPreviewError] = useState<string>('');
 
   useEffect(() => {
     // Retrieve stored data from previous steps
     const storedVariables = sessionStorage.getItem('detected-variables');
     const storedFile = sessionStorage.getItem('uploaded-file');
     const storedValues = sessionStorage.getItem('variable-values');
+    const storedMergedDoc = sessionStorage.getItem('merged-document');
 
     if (!storedVariables || !storedFile || !storedValues) {
       // Redirect back to upload if no data found
@@ -72,6 +76,26 @@ function ExportContent() {
       setVariables(JSON.parse(storedVariables));
       setUploadedFile(JSON.parse(storedFile));
       setVariableValues(JSON.parse(storedValues));
+
+      // Load merged document if available (from early merge in fill page)
+      if (storedMergedDoc) {
+        try {
+          const mergedDocData = JSON.parse(storedMergedDoc);
+          // Convert base64 back to Blob for preview
+          const byteCharacters = atob(mergedDocData.data.split(',')[1]);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          setMergedDocumentBlob(blob);
+          setPreviewError(''); // Clear any previous preview errors
+        } catch (error) {
+          console.error('Error loading merged document for preview:', error);
+          setPreviewError('Failed to load document preview. The merged document may be corrupted.');
+        }
+      }
     } catch (error) {
       console.error('Error parsing stored data:', error);
       router.push('/generate/upload');
@@ -325,27 +349,27 @@ function ExportContent() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Export Options - Takes 2 columns */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Document Preview Placeholder */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Document Preview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
-                    <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      Preview Not Available
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      Document preview will be available in a future update. 
-                      Click &quot;Generate Document&quot; to create and download your file.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Document Preview */}
+              <DocumentPreview
+                documentBlob={mergedDocumentBlob}
+                fileName={uploadedFile?.name ? uploadedFile.name.replace('.docx', '_merged.docx') : 'merged_document.docx'}
+                className="h-[600px]"
+              />
+
+              {/* Preview Error Display */}
+              {previewError && (
+                <Card className="border-destructive/20 bg-destructive/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-destructive">Preview Error</h4>
+                        <p className="text-sm text-destructive/80">{previewError}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Export Settings */}
               <Card>
@@ -426,9 +450,9 @@ function ExportContent() {
                       {isExporting ? (
                         <>
                           <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                          {exportStep === 'merging' && 'Merging Variables...'}
                           {exportStep === 'formatting' && 'Formatting Content...'}
                           {exportStep === 'downloading' && 'Preparing Download...'}
+                          {exportStep === 'idle' && 'Preparing Export...'}
                         </>
                       ) : (
                         <>
@@ -443,16 +467,6 @@ function ExportContent() {
                   {isExporting && (
                     <div className="mt-4 text-center">
                       <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-                        <div className={`flex items-center gap-2 ${exportStep === 'merging' ? 'text-primary font-medium' : exportStep === 'formatting' || exportStep === 'downloading' ? 'text-green-600' : ''}`}>
-                          {exportStep === 'merging' ? (
-                            <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
-                          ) : (exportStep === 'formatting' || exportStep === 'downloading') ? (
-                            <CheckCircle2 className="h-3 w-3" />
-                          ) : (
-                            <div className="h-3 w-3 border border-muted rounded-full" />
-                          )}
-                          <span>Merging Variables</span>
-                        </div>
                         
                         {autoFormat && (
                           <>
