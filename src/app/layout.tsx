@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Auth0Provider } from '@auth0/nextjs-auth0';
+import { Hotjar } from '@/components/analytics';
 import './globals.css';
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({
         <Auth0Provider>
           {children}
         </Auth0Provider>
+        <Hotjar />
       </body>
     </html>
   );

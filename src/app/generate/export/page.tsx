@@ -11,6 +11,7 @@ import { DocumentPreview } from '@/components/document-preview';
 import { ArrowLeft, Download, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { trackDocumentEvent } from '@/lib/hotjar';
 
 interface DetectedVariables {
   simple: string[];
@@ -137,7 +138,12 @@ function ExportContent() {
 
     setIsExporting(true);
     setExportError('');
-    setExportStep('merging');
+
+    // Track export start
+    trackDocumentEvent('EXPORT_STARTED', {
+      format: exportFormat,
+      autoFormatEnabled: autoFormat
+    });
 
     try {
       // Step 1: Merge variables
@@ -187,6 +193,19 @@ function ExportContent() {
       setDownloadUrl(url);
       setExportSuccess(true);
 
+      // Track successful export
+      trackDocumentEvent('EXPORT_COMPLETED', {
+        format: exportFormat,
+        autoFormatted: autoFormat,
+        filename: finalFilename
+      });
+
+      // Track download
+      trackDocumentEvent('DOWNLOAD_INITIATED', {
+        format: exportFormat,
+        filename: finalFilename
+      });
+
       // Auto-download the file
       const link = document.createElement('a');
       link.href = url;
@@ -196,7 +215,15 @@ function ExportContent() {
       document.body.removeChild(link);
 
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'Export failed');
+      const errorMessage = error instanceof Error ? error.message : 'Export failed';
+      setExportError(errorMessage);
+
+      // Track export error
+      trackDocumentEvent('EXPORT_ERROR', {
+        error: errorMessage,
+        format: exportFormat,
+        autoFormatted: autoFormat
+      });
     } finally {
       setIsExporting(false);
       setExportStep('idle');

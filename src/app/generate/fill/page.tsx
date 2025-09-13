@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
 import { ArrowLeft, ArrowRight, Plus, Trash2, Hash, List } from 'lucide-react';
 import Link from 'next/link';
+import { trackDocumentEvent } from '@/lib/hotjar';
 
 interface DetectedVariables {
   simple: string[];
@@ -248,12 +249,30 @@ function FillContent() {
       // Store filled values for the next step
       sessionStorage.setItem('variable-values', JSON.stringify(variableValues));
 
+      // Track variables filled
+      trackDocumentEvent('VARIABLES_FILLED', {
+        totalVariables: variables?.total_count || 0,
+        filledCount: Object.keys(variableValues).length
+      });
+
+      // Track merge start
+      trackDocumentEvent('MERGE_STARTED');
+
       // Trigger early merge for preview
       await performEarlyMerge();
+
+      // Track successful merge
+      trackDocumentEvent('MERGE_COMPLETED');
 
       router.push('/generate/export');
     } catch (error) {
       console.error('Error during merge:', error);
+
+      // Track merge error
+      trackDocumentEvent('MERGE_ERROR', {
+        error: error instanceof Error ? error.message : 'Unknown merge error'
+      });
+
       // Don't block navigation even if early merge fails
       router.push('/generate/export');
     } finally {

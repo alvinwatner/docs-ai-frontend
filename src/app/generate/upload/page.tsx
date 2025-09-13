@@ -11,6 +11,7 @@ import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
 import { Upload, FileText, ArrowLeft, AlertCircle, CheckCircle2, Hash, List, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { trackDocumentEvent } from '@/lib/hotjar';
 
 // TypeScript interfaces matching backend API response
 interface VariableDetectionResponse {
@@ -108,8 +109,26 @@ function UploadContent() {
       setDetectedVariables(variables);
       setUploadSuccess(true);
 
+      // Track successful upload and variable detection
+      trackDocumentEvent('DOCUMENT_UPLOADED', {
+        fileName: file.name,
+        fileSize: file.size,
+        variableCount: variables.total_count,
+        simpleVariables: variables.simple.length,
+        sectionVariables: variables.sections.length
+      });
+      trackDocumentEvent('VARIABLES_DETECTED', {
+        totalCount: variables.total_count
+      });
+
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'An error occurred while processing the file.');
+
+      // Track upload error
+      trackDocumentEvent('UPLOAD_ERROR', {
+        fileName: file.name,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setIsUploading(false);
     }
