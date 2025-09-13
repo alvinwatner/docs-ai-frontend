@@ -1,16 +1,33 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { LoginButton } from '@/components/auth';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { FileText, Settings, Zap } from 'lucide-react';
+import { 
+  FileText, 
+  Shield,
+  Menu,
+  X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import HeroSection from '@/components/landing/HeroSection';
+import ProblemSection from '@/components/landing/ProblemSection';
+import SolutionSection from '@/components/landing/SolutionSection';
+import DifferentiatorSection from '@/components/landing/DifferentiatorSection';
+import BenefitsSection from '@/components/landing/BenefitsSection';
+import CaseStudySection from '@/components/landing/CaseStudySection';
+import IntegrationSection from '@/components/landing/IntegrationSection';
+import CTASection from '@/components/landing/CTASection';
 
 export default function HomePage() {
   const { user, isLoading } = useUser();
   const router = useRouter();
+  const [, setActiveSection] = useState('hero');
+  const [isVisible, setIsVisible] = useState<Record<string, boolean>>({ hero: true });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -18,6 +35,46 @@ export default function HomePage() {
       router.push('/dashboard');
     }
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['hero', 'problem', 'solution', 'differentiator', 'benefits', 'case-study', 'integrations', 'cta'];
+      
+      sections.forEach(section => {
+        const element = document.getElementById(section);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const isInView = rect.top < window.innerHeight * 0.6 && rect.bottom > 0;
+          
+          setIsVisible(prev => ({
+            ...prev,
+            [section]: isInView
+          }));
+
+          if (rect.top <= 100 && rect.bottom >= 100) {
+            setActiveSection(section);
+          }
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleGetStarted = () => {
+    window.location.href = '/auth/login';
+  };
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -30,111 +87,145 @@ export default function HomePage() {
 
   // Show landing page for unauthenticated users
   if (!user) {
-    return <LandingPage />;
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Sticky Navigation */}
+        <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              {/* Logo */}
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollToSection('hero')}>
+                <FileText className="w-8 h-8 text-blue-600" />
+                <span className="text-xl font-bold text-gray-900">Docko</span>
+              </div>
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center gap-8">
+                <button 
+                  onClick={() => scrollToSection('solution')}
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  How It Works
+                </button>
+                <button 
+                  onClick={() => scrollToSection('benefits')}
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Benefits
+                </button>
+                <button 
+                  onClick={() => scrollToSection('case-study')}
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Results
+                </button>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleGetStarted}
+                >
+                  Get Started
+                </Button>
+              </div>
+              {/* Mobile Menu Button */}
+              <div className="md:hidden">
+                <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                  {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* Mobile Menu */}
+          <AnimatePresence>
+            {isMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="md:hidden bg-white border-t border-gray-100"
+              >
+                <div className="px-6 py-4 flex flex-col items-center gap-4">
+                  <button onClick={() => scrollToSection('solution')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">How It Works</button>
+                  <button onClick={() => scrollToSection('benefits')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Benefits</button>
+                  <button onClick={() => scrollToSection('case-study')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Results</button>
+                  <Button onClick={handleGetStarted} className="w-full bg-blue-600 hover:bg-blue-700 text-lg">Get Started</Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </nav>
+
+        {/* Page Sections */}
+        <div className="pt-20">
+          <HeroSection id="hero" isVisible={isVisible.hero} />
+          <ProblemSection id="problem" isVisible={isVisible.problem} />
+          <SolutionSection id="solution" isVisible={isVisible.solution} />
+          <DifferentiatorSection id="differentiator" isVisible={isVisible.differentiator} />
+          <BenefitsSection id="benefits" isVisible={isVisible.benefits} />
+          <CaseStudySection id="case-study" isVisible={isVisible['case-study']} />
+          <IntegrationSection id="integrations" isVisible={isVisible.integrations} />
+          <CTASection id="cta" isVisible={isVisible.cta} />
+        </div>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-white py-12">
+          <div className="max-w-7xl mx-auto px-6">
+            {/* Adjusted grid for better mobile responsiveness */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="sm:col-span-2 md:col-span-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-6 h-6 text-blue-400" />
+                  <span className="text-lg font-semibold">Docko</span>
+                </div>
+                <p className="text-gray-400 text-sm">
+                  Transform your Word documents into intelligent templates. 
+                  Simple, powerful document automation.
+                </p>
+                <div className="flex items-center gap-2 mt-4">
+                  <Shield className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-gray-300">Secure & Reliable</span>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-4">Product</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><a href="#" className="hover:text-white">Features</a></li>
+                  <li><a href="#" className="hover:text-white">Pricing</a></li>
+                  <li><a href="#" className="hover:text-white">Security</a></li>
+                  <li><a href="#" className="hover:text-white">Integrations</a></li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-4">Support</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><a href="#" className="hover:text-white">Documentation</a></li>
+                  <li><a href="#" className="hover:text-white">Training</a></li>
+                  <li><a href="#" className="hover:text-white">Contact</a></li>
+                  <li><a href="#" className="hover:text-white">Help Center</a></li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-4">Company</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><a href="#" className="hover:text-white">About</a></li>
+                  <li><a href="#" className="hover:text-white">Blog</a></li>
+                  <li><a href="#" className="hover:text-white">Privacy</a></li>
+                  <li><a href="#" className="hover:text-white">Terms</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+              <p>&copy; 2024 Docko. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
   }
 
   // This shouldn't render, but just in case
   return null;
-}
-
-function LandingPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-card-foreground">Docko</h1>
-            </div>
-            <LoginButton />
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="py-20 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl mb-6">
-            Document Automation
-            <br />
-            <span className="text-primary">Made Simple</span>
-          </h1>
-          <div className="mx-auto max-w-2xl mb-10">
-            <p className="text-lg leading-relaxed text-muted-foreground break-words">
-              Use the DOCX templates you already know. No complex tools to learn. 
-              Just upload your template, fill in the variables, and generate professional documents instantly.
-            </p>
-          </div>
-          <div className="flex justify-center gap-4">
-            <LoginButton size="lg" />
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="py-20">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Why Choose Docko?
-          </h2>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Feature 1 */}
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Familiar Tools</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Use Microsoft Word (.docx) files you already have. No need to learn new template designers.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Feature 2 */}
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Simple & Complex Variables</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Handle basic text replacement and complex repeating sections with tables - something no other tool can do.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Feature 3 */}
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Settings className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>No Learning Curve</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Built for professionals who want results, not complexity. Clean interface designed for efficiency.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="py-20 text-center border-t border-border">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Ready to automate your documents?
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            Start with our free plan. No credit card required.
-          </p>
-          <LoginButton size="xl" />
-        </div>
-      </main>
-    </div>
-  );
 }
