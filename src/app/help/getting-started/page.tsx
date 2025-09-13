@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { AuthGuard } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft,
@@ -17,7 +16,6 @@ import {
   CheckCircle,
   Info,
   Copy,
-  ChevronRight,
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
