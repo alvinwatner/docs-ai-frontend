@@ -17,8 +17,6 @@ export async function GET(_req: NextRequest) {
     // The access token should be in session.accessToken or session.tokenSet.accessToken
     const accessToken = session.accessToken || session.tokenSet?.accessToken;
 
-    console.log("Access token found:", accessToken ? `${accessToken.substring(0, 50)}...` : "null");
-
     if (!accessToken) {
       // The token might be the encrypted session token, not the API access token
       // This happens when AUTH0_AUDIENCE is not properly configured
@@ -30,15 +28,6 @@ export async function GET(_req: NextRequest) {
           hasTokenSet: !!session.tokenSet,
           tokenKeys: session.tokenSet ? Object.keys(session.tokenSet) : []
         }
-      }, { status: 401 });
-    }
-
-    // Check if the token is a JWT (starts with eyJ) or encrypted (starts with eyJh)
-    if (accessToken.startsWith("eyJhbGciOiJkaXIi")) {
-      return NextResponse.json({
-        error: "Token is encrypted (JWE), not a JWT",
-        details: "The token is a session token, not an API access token. Check Auth0 API configuration.",
-        tokenType: "JWE (encrypted session token)"
       }, { status: 401 });
     }
 
