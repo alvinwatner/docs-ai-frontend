@@ -9,7 +9,16 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
-import { Upload, FileText, ArrowLeft, AlertCircle, CheckCircle2, Hash, List, ArrowRight } from 'lucide-react';
+import {
+  Upload,
+  FileText,
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle2,
+  Hash,
+  List,
+  ArrowRight,
+} from 'lucide-react';
 import Link from 'next/link';
 import { trackDocumentEvent } from '@/lib/hotjar';
 
@@ -36,31 +45,54 @@ export default function UploadPage() {
 }
 
 function UploadContent() {
-  const { } = useUser();
+  const { user, error: userError, isLoading: userLoading } = useUser();
   const router = useRouter();
+  
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [detectedVariables, setDetectedVariables] = useState<VariableDetectionResponse | null>(null);
+  const [detectedVariables, setDetectedVariables] =
+    useState<VariableDetectionResponse | null>(null);
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file) return;
 
-    if (file.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    if (
+      file.type !==
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
       setUploadError('Please upload a valid DOCX file.');
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 10 * 1024 * 1024) {
+      // 10MB limit
       setUploadError('File size must be less than 10MB.');
       return;
     }
 
     // Warn about large files that may cause storage issues
-    if (file.size > 8 * 1024 * 1024) { // 8MB warning
+    if (file.size > 8 * 1024 * 1024) {
+      // 8MB warning
       console.warn('Large file detected. May cause sessionStorage issues.');
+    }
+
+    // Check user authentication first
+    if (userLoading) {
+      setUploadError('Please wait, authentication is loading...');
+      return;
+    }
+
+    if (userError) {
+      setUploadError(`Authentication error: ${userError.message}`);
+      return;
+    }
+
+    if (!user) {
+      setUploadError('Please log in to upload files');
+      return;
     }
 
     setIsUploading(true);
@@ -75,33 +107,36 @@ function UploadContent() {
         reader.readAsDataURL(file);
       });
 
+      // Make direct API call (with or without token for testing)
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/detect-variables`, {
+      const response = await fetch('/api/documents/detect-variables', {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to process document');
+        throw new Error(`Request failed: ${response.status}`);
       }
 
       const variables: VariableDetectionResponse = await response.json();
-      
+
       // Store the file (with base64 content) and variables in sessionStorage
       const fileInfo: UploadedFileInfo & { base64: string } = {
         name: file.name,
         size: file.size,
         type: file.type,
-        base64: fileBase64
+        base64: fileBase64,
       };
-      
+
       try {
         sessionStorage.setItem('uploaded-file', JSON.stringify(fileInfo));
         sessionStorage.setItem('detected-variables', JSON.stringify(variables));
       } catch {
-        throw new Error('File too large for storage. Please use a smaller file (recommended: under 5MB).');
+        throw new Error(
+          'File too large for storage. Please use a smaller file (recommended: under 5MB).'
+        );
       }
 
       // Set local state to show variables inline
@@ -115,19 +150,22 @@ function UploadContent() {
         fileSize: file.size,
         variableCount: variables.total_count,
         simpleVariables: variables.simple.length,
-        sectionVariables: variables.sections.length
+        sectionVariables: variables.sections.length,
       });
       trackDocumentEvent('VARIABLES_DETECTED', {
-        totalCount: variables.total_count
+        totalCount: variables.total_count,
       });
-
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'An error occurred while processing the file.');
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred while processing the file.'
+      );
 
       // Track upload error
       trackDocumentEvent('UPLOAD_ERROR', {
         fileName: file.name,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setIsUploading(false);
@@ -144,22 +182,28 @@ function UploadContent() {
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
-  }, [handleFileUpload]);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    },
+    [handleFileUpload]
+  );
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileUpload(files[0]);
-    }
-  }, [handleFileUpload]);
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    },
+    [handleFileUpload]
+  );
 
   // Removed separate success screen - show variables inline instead
 
@@ -170,20 +214,26 @@ function UploadContent() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link href="/dashboard" className="text-card-foreground text-xl font-semibold hover:text-primary transition-colors">
+              <Link
+                href="/dashboard"
+                className="text-card-foreground hover:text-primary text-xl font-semibold transition-colors"
+              >
                 Docko
               </Link>
-              
+
               {/* Breadcrumb */}
-              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-                <Link href="/dashboard" className="hover:text-foreground transition-colors">
+              <div className="text-muted-foreground hidden items-center gap-2 text-sm md:flex">
+                <Link
+                  href="/dashboard"
+                  className="hover:text-foreground transition-colors"
+                >
                   Dashboard
                 </Link>
                 <span>/</span>
                 <span>Upload Template</span>
               </div>
             </div>
-            
+
             <UserMenu />
           </div>
         </div>
@@ -193,30 +243,31 @@ function UploadContent() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Stepper */}
         <div className="mb-8">
-          <Stepper 
-            currentStep={1} 
+          <Stepper
+            currentStep={1}
             steps={DOCUMENT_GENERATION_STEPS}
-            className="max-w-2xl mx-auto"
+            className="mx-auto max-w-2xl"
           />
         </div>
         <div className="mb-8">
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
+          <Link
+            href="/dashboard"
+            className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-2 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Link>
-          
-          <h1 className="text-3xl font-semibold text-foreground mb-2">
+
+          <h1 className="text-foreground mb-2 text-3xl font-semibold">
             Upload Document Template
           </h1>
           <p className="text-muted-foreground">
-            Upload your DOCX template with variable placeholders like {`{{variable_name}}`}.
+            Upload your DOCX template with variable placeholders like{' '}
+            {`{{variable_name}}`}.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Upload Area - Takes 2 columns */}
           <div className="lg:col-span-2">
             <Card>
@@ -225,17 +276,17 @@ function UploadContent() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                  className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
                     isDragOver
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-muted/20'
-                  } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  } ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
                 >
                   {isUploading ? (
                     <div className="flex flex-col items-center gap-4">
-                      <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
+                      <div className="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"></div>
                       <div>
-                        <h3 className="text-lg font-medium text-foreground mb-2">
+                        <h3 className="text-foreground mb-2 text-lg font-medium">
                           Processing Document...
                         </h3>
                         <p className="text-muted-foreground text-sm">
@@ -245,14 +296,14 @@ function UploadContent() {
                     </div>
                   ) : (
                     <>
-                      <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">
+                      <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+                      <h3 className="text-foreground mb-2 text-lg font-medium">
                         Drop your DOCX file here
                       </h3>
-                      <p className="text-muted-foreground text-sm mb-6">
+                      <p className="text-muted-foreground mb-6 text-sm">
                         or click to browse from your computer
                       </p>
-                      
+
                       <input
                         type="file"
                         accept=".docx"
@@ -262,7 +313,12 @@ function UploadContent() {
                         disabled={isUploading}
                       />
                       <label htmlFor="file-input" className="cursor-pointer">
-                        <Button type="button" onClick={() => document.getElementById('file-input')?.click()}>
+                        <Button
+                          type="button"
+                          onClick={() =>
+                            document.getElementById('file-input')?.click()
+                          }
+                        >
                           Browse Files
                         </Button>
                       </label>
@@ -272,11 +328,15 @@ function UploadContent() {
 
                 {/* Error Message */}
                 {uploadError && (
-                  <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                  <div className="bg-destructive/10 border-destructive/20 mt-4 flex items-start gap-3 rounded-lg border p-4">
+                    <AlertCircle className="text-destructive mt-0.5 h-5 w-5" />
                     <div>
-                      <h4 className="font-medium text-destructive">Upload Error</h4>
-                      <p className="text-sm text-destructive/80">{uploadError}</p>
+                      <h4 className="text-destructive font-medium">
+                        Upload Error
+                      </h4>
+                      <p className="text-destructive/80 text-sm">
+                        {uploadError}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -285,33 +345,37 @@ function UploadContent() {
                 {uploadSuccess && detectedVariables && uploadedFile && (
                   <div className="mt-6 space-y-4">
                     {/* File Info */}
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                         <div className="flex-1">
-                          <h4 className="font-medium text-green-900">{uploadedFile.name}</h4>
+                          <h4 className="font-medium text-green-900">
+                            {uploadedFile.name}
+                          </h4>
                           <p className="text-sm text-green-700">
-                            Found {detectedVariables.total_count} variable{detectedVariables.total_count !== 1 ? 's' : ''}
+                            Found {detectedVariables.total_count} variable
+                            {detectedVariables.total_count !== 1 ? 's' : ''}
                           </p>
                         </div>
                         <Badge variant="secondary">
-                          {detectedVariables.total_count} variable{detectedVariables.total_count !== 1 ? 's' : ''}
+                          {detectedVariables.total_count} variable
+                          {detectedVariables.total_count !== 1 ? 's' : ''}
                         </Badge>
                       </div>
                     </div>
 
                     {/* Simple Variables */}
                     {detectedVariables.simple.length > 0 && (
-                      <div className="p-4 border border-border rounded-lg">
-                        <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                      <div className="border-border rounded-lg border p-4">
+                        <h4 className="text-foreground mb-3 flex items-center gap-2 font-medium">
                           <Hash className="h-4 w-4" />
                           Simple Variables ({detectedVariables.simple.length})
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                           {detectedVariables.simple.map((variable, index) => (
                             <code
                               key={index}
-                              className="text-sm font-mono bg-muted px-2 py-1 rounded"
+                              className="bg-muted rounded px-2 py-1 font-mono text-sm"
                             >
                               {`{{${variable}}}`}
                             </code>
@@ -322,15 +386,19 @@ function UploadContent() {
 
                     {/* Section Variables */}
                     {detectedVariables.sections.length > 0 && (
-                      <div className="p-4 border border-border rounded-lg">
-                        <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                      <div className="border-border rounded-lg border p-4">
+                        <h4 className="text-foreground mb-3 flex items-center gap-2 font-medium">
                           <List className="h-4 w-4" />
-                          Section Variables ({detectedVariables.sections.length})
+                          Section Variables ({detectedVariables.sections.length}
+                          )
                         </h4>
                         <div className="space-y-2">
                           {detectedVariables.sections.map((variable, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                            <div
+                              key={index}
+                              className="flex items-center gap-2"
+                            >
+                              <code className="bg-muted rounded px-2 py-1 font-mono text-sm">
                                 {`{{${variable}}}`}
                               </code>
                               <Badge variant="outline" className="text-xs">
@@ -344,12 +412,16 @@ function UploadContent() {
 
                     {/* No Variables Found */}
                     {detectedVariables.total_count === 0 && (
-                      <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                      <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4">
+                        <AlertCircle className="mt-0.5 h-5 w-5 text-orange-600" />
                         <div>
-                          <h4 className="font-medium text-orange-900">No Variables Detected</h4>
+                          <h4 className="font-medium text-orange-900">
+                            No Variables Detected
+                          </h4>
                           <p className="text-sm text-orange-700">
-                            We couldn&apos;t find any variables in your template. Variables should be formatted as {`{{variable_name}}`}.
+                            We couldn&apos;t find any variables in your
+                            template. Variables should be formatted as{' '}
+                            {`{{variable_name}}`}.
                           </p>
                         </div>
                       </div>
@@ -357,12 +429,14 @@ function UploadContent() {
 
                     {/* Continue Button */}
                     <div className="flex justify-center pt-4">
-                      <Button 
+                      <Button
                         onClick={() => router.push('/generate/fill')}
                         size="lg"
                         className="flex items-center gap-2"
                       >
-                        {detectedVariables.total_count > 0 ? 'Continue to Fill Variables' : 'Continue Anyway'}
+                        {detectedVariables.total_count > 0
+                          ? 'Continue to Fill Variables'
+                          : 'Continue Anyway'}
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -371,9 +445,10 @@ function UploadContent() {
 
                 {/* Requirements - Only show when no variables detected yet */}
                 {!uploadSuccess && (
-                  <div className="mt-6 text-xs text-muted-foreground">
+                  <div className="text-muted-foreground mt-6 text-xs">
                     <p>
-                      <strong>Requirements:</strong> DOCX files only, maximum 10MB
+                      <strong>Requirements:</strong> DOCX files only, maximum
+                      10MB
                     </p>
                   </div>
                 )}
@@ -392,28 +467,32 @@ function UploadContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Variable Format</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <h4 className="text-foreground mb-2 font-medium">
+                    Variable Format
+                  </h4>
+                  <p className="text-muted-foreground mb-2 text-sm">
                     Use double curly braces to create variables:
                   </p>
-                  <code className="text-xs bg-muted px-2 py-1 rounded">
+                  <code className="bg-muted rounded px-2 py-1 text-xs">
                     {`{{client_name}}`}
                   </code>
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Section Variables</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <h4 className="text-foreground mb-2 font-medium">
+                    Section Variables
+                  </h4>
+                  <p className="text-muted-foreground mb-2 text-sm">
                     For repeating sections like tables:
                   </p>
-                  <code className="text-xs bg-muted px-2 py-1 rounded">
+                  <code className="bg-muted rounded px-2 py-1 text-xs">
                     {`{{section_tables}}`}
                   </code>
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Examples</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
+                  <h4 className="text-foreground mb-2 font-medium">Examples</h4>
+                  <ul className="text-muted-foreground space-y-1 text-sm">
                     <li>• {`{{company_name}}`}</li>
                     <li>• {`{{invoice_number}}`}</li>
                     <li>• {`{{client_address}}`}</li>
@@ -421,10 +500,13 @@ function UploadContent() {
                   </ul>
                 </div>
 
-                <div className="pt-4 border-t border-border">
-                  <Link 
+                <div className="border-border border-t pt-4">
+                  <Link
                     href="/help/getting-started"
-                    className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "w-full")}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full'
+                    )}
                   >
                     View Complete Guide
                   </Link>

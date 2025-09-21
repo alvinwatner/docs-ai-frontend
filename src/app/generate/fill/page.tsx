@@ -313,8 +313,8 @@ function FillContent() {
       mergeFormData.append('file', originalFile);
       mergeFormData.append('variables', JSON.stringify(variableValues));
 
-      // Call merge API
-      const mergeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/merge-variables`, {
+      // Call merge API via Next.js API route
+      const mergeResponse = await fetch('/api/documents/merge-variables', {
         method: 'POST',
         body: mergeFormData,
       });

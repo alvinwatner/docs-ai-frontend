@@ -152,7 +152,7 @@ function ExportContent() {
       mergeFormData.append('file', originalFile);
       mergeFormData.append('variables', JSON.stringify(variableValues));
 
-      const mergeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/merge-variables`, {
+      const mergeResponse = await fetch('/api/documents/merge-variables', {
         method: 'POST',
         body: mergeFormData,
       });
@@ -174,7 +174,7 @@ function ExportContent() {
         });
         formatFormData.append('file', mergedFile);
 
-        const formatResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/format`, {
+        const formatResponse = await fetch('/api/documents/format', {
           method: 'POST',
           body: formatFormData,
         });
