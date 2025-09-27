@@ -5,9 +5,17 @@ import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Plus, FileText, Clock, HelpCircle, X, BookOpen } from 'lucide-react';
+import { Plus, FileText, Clock, HelpCircle, X, BookOpen, Download, Trash2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { managementApi, type Document, type UserStats } from '@/lib/management-api';
+import { Tooltip } from '@/components/ui/tooltip';
+import {
+  truncateFilename,
+  getFileTypeIcon,
+  formatRelativeTime,
+  formatFileSize
+} from '@/lib/document-utils';
 
 export default function DashboardPage() {
   return (
@@ -20,6 +28,52 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { user } = useUser();
   const [showGettingStarted, setShowGettingStarted] = useState(true);
+  const [recentDocs, setRecentDocs] = useState<Document[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      // Load recent documents and stats in parallel
+      const [docsData, statsData] = await Promise.all([
+        managementApi.documents.list({ limit: 5 }),
+        managementApi.stats.get()
+      ]);
+
+      setRecentDocs(docsData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async (docId: string) => {
+    try {
+      const { download_url } = await managementApi.documents.downloadUrl(docId);
+      window.open(download_url, '_blank');
+    } catch (error) {
+      console.error('Failed to download document:', error);
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      await managementApi.documents.delete(docId);
+      // Reload recent documents
+      const docsData = await managementApi.documents.list({ limit: 5 });
+      setRecentDocs(docsData);
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+    }
+  };
 
   return (
     <div className="bg-background min-h-screen">
@@ -184,13 +238,80 @@ function DashboardContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-muted-foreground py-8 text-center">
-                <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p>No documents yet</p>
-                <p className="text-sm">
-                  Create your first document to see it appear here.
-                </p>
-              </div>
+              {loading ? (
+                <div className="py-8 text-center">
+                  <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading recent documents...</p>
+                </div>
+              ) : recentDocs.length === 0 ? (
+                <div className="text-muted-foreground py-8 text-center">
+                  <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
+                  <p>No documents yet</p>
+                  <p className="text-sm">
+                    Create your first document to see it appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentDocs.map((doc) => {
+                    const FileIcon = getFileTypeIcon(doc.export_format);
+
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors group">
+                        <div className="flex-1 min-w-0">
+                          <Tooltip content={doc.name}>
+                            <p className="font-medium text-sm cursor-default">{truncateFilename(doc.name, 30)}</p>
+                          </Tooltip>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <Tooltip content={new Date(doc.created_at).toLocaleString()}>
+                                <span className="cursor-default">{formatRelativeTime(doc.created_at)}</span>
+                              </Tooltip>
+                            </div>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              <FileIcon className="h-3 w-3" />
+                              <span className="uppercase font-medium">{doc.export_format}</span>
+                            </div>
+                            <span>•</span>
+                            <span>{formatFileSize(doc.file_size_bytes)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-4 opacity-70 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDownload(doc.id)}
+                            className="h-8 w-8 p-0 hover:scale-110 transition-transform"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(doc.id)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:scale-110 transition-transform"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {recentDocs.length > 0 && (
+                    <div className="pt-2">
+                      <Link
+                        href="/documents"
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full")}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View All Documents
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -200,26 +321,39 @@ function DashboardContent() {
               <CardTitle>This Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">
-                    Documents Created
-                  </span>
-                  <span className="font-medium">0</span>
+              {loading ? (
+                <div className="py-8 text-center">
+                  <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading stats...</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">Plan</span>
-                  <span className="font-medium">Free</span>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-sm">
+                      Documents Created
+                    </span>
+                    <span className="font-medium">{stats?.documents_created || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-sm">
+                      Templates Saved
+                    </span>
+                    <span className="font-medium">{stats?.templates_uploaded || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-sm">Plan</span>
+                    <span className="font-medium">{stats?.plan_tier || 'Free'}</span>
+                  </div>
+                  <div className="pt-4">
+                    <Link
+                      href="/settings/billing"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                    >
+                      View Usage Details
+                    </Link>
+                  </div>
                 </div>
-                <div className="pt-4">
-                  <Link 
-                    href="/settings/billing"
-                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                  >
-                    View Usage Details
-                  </Link>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -6,8 +6,6 @@ export async function GET(_req: NextRequest) {
     // Get the session from Auth0
     const session = await auth0.getSession();
 
-    console.log("Full session object:", JSON.stringify(session, null, 2));
-
     if (!session) {
       return NextResponse.json({
         error: "No session found. User may not be logged in.",

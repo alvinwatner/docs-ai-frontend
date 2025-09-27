@@ -1,29 +1,24 @@
-// app/api/documents/detect-variables/route.ts
 import { auth0 } from "@/lib/auth0";
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get Auth0 token server-side
     const session = await auth0.getSession();
     const accessToken = session?.tokenSet.accessToken;
-    
+
     if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the form data from the request
-    const formData = await request.formData();
-    
-    // Forward to your backend API
+    // Forward to backend with auth token
     const response = await fetch(
-      `${process.env.API_BASE_URL}/documents/detect-variables`,
+      `${process.env.API_BASE_URL}/management/stats`,
       {
-        method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-        },
-        body: formData,
+          'Content-Type': 'application/json'
+        }
       }
     );
 
@@ -33,11 +28,11 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-    
+
   } catch (error) {
     console.error('API route error:', error);
     return NextResponse.json(
-      { error: 'Failed to process document' },
+      { error: 'Failed to fetch stats' },
       { status: 500 }
     );
   }
