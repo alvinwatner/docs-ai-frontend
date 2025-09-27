@@ -1,10 +1,7 @@
 import { auth0 } from "@/lib/auth0";
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await auth0.getSession();
     const accessToken = session?.tokenSet.accessToken;
@@ -13,9 +10,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const resolvedParams = await params;
     const response = await fetch(
-      `${process.env.API_BASE_URL}/management/templates/${resolvedParams.id}/download`,
+      `${process.env.API_BASE_URL}/management/user-profile`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -34,7 +30,7 @@ export async function GET(
   } catch (error) {
     console.error('API route error:', error);
     return NextResponse.json(
-      { error: 'Failed to get download URL' },
+      { error: 'Failed to get user profile' },
       { status: 500 }
     );
   }

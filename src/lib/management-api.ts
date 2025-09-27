@@ -44,6 +44,30 @@ export interface UserStats {
   last_activity: string;
 }
 
+export interface UserProfile {
+  user: {
+    id: string;
+    auth0_user_id: string;
+    email: string;
+    name: string;
+    subscription_tier: string;
+    created_at: string;
+    updated_at: string;
+  };
+  stats: {
+    documents_created: number;
+    templates_uploaded: number;
+    storage_used_bytes: number;
+    storage_quota_bytes: number;
+    storage_percentage: number;
+  };
+  dashboard_state: 'first_time_user' | 'has_templates_no_docs' | 'returning_user';
+  recent_templates: Template[];
+  recent_documents: Document[];
+  is_first_time_user: boolean;
+  has_templates_no_docs: boolean;
+}
+
 export interface DownloadUrlResponse {
   download_url: string;
   expires_in: number;
@@ -136,6 +160,14 @@ export const managementApi = {
     get: async (): Promise<UserStats> => {
       const res = await fetch('/api/management/stats');
       if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json();
+    }
+  },
+
+  user: {
+    getProfile: async (): Promise<UserProfile> => {
+      const res = await fetch('/api/management/user-profile');
+      if (!res.ok) throw new Error('Failed to fetch user profile');
       return res.json();
     }
   }

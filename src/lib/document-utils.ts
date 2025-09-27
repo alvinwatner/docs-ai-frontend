@@ -22,9 +22,7 @@ export function truncateFilename(filename: string, maxLength: number = 30): stri
 /**
  * Get appropriate icon for file type
  */
-export function getFileTypeIcon(format: string, className?: string) {
-  const iconProps = { className: className || "h-4 w-4" };
-
+export function getFileTypeIcon(format: string) {
   switch (format.toLowerCase()) {
     case 'docx':
     case 'doc':

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth0.getSession();
@@ -13,8 +13,9 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const response = await fetch(
-      `${process.env.API_BASE_URL}/management/documents/${params.id}/download`,
+      `${process.env.API_BASE_URL}/management/documents/${resolvedParams.id}/download`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
