@@ -233,11 +233,11 @@ function DocumentsContent() {
               const isLoading = loadingStates[doc.id];
 
               return (
-                <Card key={doc.id} className="group hover:shadow-lg hover:scale-[1.02] transition-all duration-200 hover:border-primary/20">
+                <Card key={doc.id} className="group hover:shadow-lg hover:scale-[1.02] transition-all duration-200 hover:border-primary/20 min-w-0">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <Tooltip content={doc.name}>
-                        <CardTitle className="text-base flex-1 mr-2 cursor-default">
+                        <CardTitle className="text-base flex-1 mr-2 cursor-default truncate">
                           {truncateFilename(doc.name, 25)}
                         </CardTitle>
                       </Tooltip>
@@ -294,7 +294,7 @@ function DocumentsContent() {
                     <div className="space-y-3">
                       <div className="text-sm text-muted-foreground">
                         <Tooltip content={doc.generated_filename}>
-                          <p className="cursor-default">{truncateFilename(doc.generated_filename, 35)}</p>
+                          <p className="cursor-default break-words truncate">{truncateFilename(doc.generated_filename, 35)}</p>
                         </Tooltip>
                         <p>{formatFileSize(doc.file_size_bytes)} • Downloaded {doc.download_count} times</p>
                       </div>
