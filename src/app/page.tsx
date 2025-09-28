@@ -14,10 +14,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import HeroSection from '@/components/landing/HeroSection';
+import SecurityBadges from '@/components/landing/SecurityBadges';
+import ClientLogos from '@/components/landing/ClientLogos';
 import ProblemSection from '@/components/landing/ProblemSection';
 import SolutionSection from '@/components/landing/SolutionSection';
 import DifferentiatorSection from '@/components/landing/DifferentiatorSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
+import TestimonialsSlider from '@/components/landing/TestimonialsSlider';
 import CaseStudySection from '@/components/landing/CaseStudySection';
 import IntegrationSection from '@/components/landing/IntegrationSection';
 import PricingSection from '@/components/landing/PricingSection';
@@ -164,10 +167,13 @@ export default function HomePage() {
         {/* Page Sections */}
         <div className="pt-20">
           <HeroSection id="hero" isVisible={isVisible.hero} />
+          <SecurityBadges variant="compact" />
+          <ClientLogos />
           <ProblemSection id="problem" isVisible={isVisible.problem} />
           <SolutionSection id="solution" isVisible={isVisible.solution} />
           <DifferentiatorSection id="differentiator" isVisible={isVisible.differentiator} />
           <BenefitsSection id="benefits" isVisible={isVisible.benefits} />
+          <TestimonialsSlider />
           <CaseStudySection id="case-study" isVisible={isVisible['case-study']} />
           <PricingSection id="pricing" isVisible={isVisible.pricing} />
           <IntegrationSection id="integrations" isVisible={isVisible.integrations} />

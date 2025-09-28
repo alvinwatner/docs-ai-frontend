@@ -311,6 +311,7 @@ export default function SolutionSection({ id, isVisible }: LandingSectionProps) 
             </button>
           </div>
         </motion.div>
+
       </div>
     </section>
   );

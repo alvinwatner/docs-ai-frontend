@@ -13,6 +13,10 @@ export default function HeroSection({ id, isVisible }: LandingSectionProps) {
     // In a real app, this would trigger a demo video or modal
   };
 
+  const handleUploadTemplate = () => {
+    window.location.href = '/generate/upload';
+  };
+
   return (
     <section id={id} className="relative py-20 lg:py-28 bg-gradient-to-br from-gray-50 to-white overflow-hidden">
       {/* Background Elements */}
@@ -66,23 +70,46 @@ export default function HeroSection({ id, isVisible }: LandingSectionProps) {
               transition={{ duration: 0.8, delay: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
             >
-              <Button 
-                size="lg" 
-                className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4 h-auto"
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-6 h-auto shadow-lg hover:shadow-xl transition-all"
+                onClick={handleUploadTemplate}
+              >
+                <FileText className="w-5 h-5 mr-2" />
+                Upload Your Template
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="text-lg px-8 py-4 h-auto border-2 hover:bg-gray-50"
                 onClick={handleDemo}
               >
                 <Play className="w-5 h-5 mr-2" />
-                See How It Works
+                Watch Demo (30s)
               </Button>
-              
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="text-lg px-8 py-4 h-auto border-2 hover:bg-gray-50"
-              >
-                Try With Your Document
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+            </motion.div>
+
+            {/* Trust indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={isVisible ? { opacity: 1 } : {}}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="flex items-center gap-6 text-sm text-gray-600 justify-center lg:justify-start"
+            >
+              <div className="flex items-center gap-1">
+                <Zap className="w-4 h-4 text-green-600" />
+                <span>No credit card required</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Zap className="w-4 h-4 text-green-600" />
+                <span>5 min setup</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Zap className="w-4 h-4 text-green-600" />
+                <span>100% secure</span>
+              </div>
             </motion.div>
 
           </motion.div>

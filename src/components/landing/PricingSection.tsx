@@ -38,7 +38,7 @@ export default function PricingSection({ id, isVisible }: LandingSectionProps) {
       description: 'For power users and small teams',
       price: 'Free',
       period: 'for 3 months',
-      originalPrice: '$29/month after',
+      originalPrice: '$15/month after',
       icon: Zap,
       color: 'purple',
       features: [
