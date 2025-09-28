@@ -215,13 +215,7 @@ function DashboardContent() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Link
-                    href="/templates/select"
-                    className={cn(buttonVariants(), "flex items-center gap-2")}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Generate Document
-                  </Link>
+            
 
                   <UserMenu />
                 </div>

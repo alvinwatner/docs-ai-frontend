@@ -37,7 +37,12 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': 'attachment; filename="formatted_document.docx"',
+        'Content-Disposition': response.headers.get('Content-Disposition') || 'attachment; filename="formatted_document.docx"',
+        'X-Document-ID': response.headers.get('X-Document-ID') || '',
+        'X-Source-Document-ID': response.headers.get('X-Source-Document-ID') || '',
+        'X-Processing-Time': response.headers.get('X-Processing-Time') || '0',
+        'X-Paragraphs-Formatted': response.headers.get('X-Paragraphs-Formatted') || '0',
+        'X-Empty-Paragraphs-Added': response.headers.get('X-Empty-Paragraphs-Added') || '0',
       },
     });
 

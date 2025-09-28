@@ -30,10 +30,11 @@ export interface Document {
   file_size_bytes: number;
   status: string;
   download_count: number;
-  variables_used: Record<string, unknown>;
+  tags: string[];
   is_favorite: boolean;
+  notes: string;
   created_at: string;
-  updated_at: string;
+  last_downloaded_at?: string;
 }
 
 export interface UserStats {

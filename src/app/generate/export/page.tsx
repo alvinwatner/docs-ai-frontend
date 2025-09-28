@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -46,6 +46,12 @@ export default function ExportPage() {
 function ExportContent() {
   const { } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get URL parameters for validation
+  const templateId = searchParams.get('template');
+  const documentId = searchParams.get('document');
+
   const [variables, setVariables] = useState<DetectedVariables | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [variableValues, setVariableValues] = useState<VariableValues>({});
@@ -61,6 +67,12 @@ function ExportContent() {
   const [previewError, setPreviewError] = useState<string>('');
 
   useEffect(() => {
+    // Validate URL parameters first
+    if (!templateId) {
+      router.push('/templates?error=template-required');
+      return;
+    }
+
     // Retrieve stored data from previous steps
     const storedVariables = sessionStorage.getItem('detected-variables');
     const storedFile = sessionStorage.getItem('uploaded-file');
@@ -68,8 +80,8 @@ function ExportContent() {
     const storedMergedDoc = sessionStorage.getItem('merged-document');
 
     if (!storedVariables || !storedFile || !storedValues) {
-      // Redirect back to upload if no data found
-      router.push('/generate/upload');
+      // Redirect back to fill if no sessionStorage data found
+      router.push(`/generate/fill?template=${templateId}`);
       return;
     }
 
@@ -78,7 +90,7 @@ function ExportContent() {
       setUploadedFile(JSON.parse(storedFile));
       setVariableValues(JSON.parse(storedValues));
 
-      // Load merged document if available (from early merge in fill page)
+      // Load merged document if available (from merge in fill page)
       if (storedMergedDoc) {
         try {
           const mergedDocData = JSON.parse(storedMergedDoc);
@@ -99,42 +111,15 @@ function ExportContent() {
       }
     } catch (error) {
       console.error('Error parsing stored data:', error);
-      router.push('/generate/upload');
+      router.push(`/generate/fill?template=${templateId}`);
       return;
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
-
-  // Helper function to convert base64 to File object
-  const base64ToFile = (base64String: string, filename: string): File => {
-    const arr = base64String.split(',');
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, { type: mime });
-  };
+  }, [router, templateId]);
 
   const handleExport = async () => {
-    const storedFile = sessionStorage.getItem('uploaded-file');
-    if (!storedFile || !variableValues) return;
-
-    let parsedFileInfo: UploadedFile & { base64?: string };
-    try {
-      parsedFileInfo = JSON.parse(storedFile);
-    } catch {
-      setExportError('Unable to retrieve uploaded file. Please start over.');
-      return;
-    }
-
-    if (!parsedFileInfo.base64) {
-      setExportError('File data not found. Please re-upload your template.');
-      return;
-    }
+    if (!variableValues || !documentId) return;
 
     setIsExporting(true);
     setExportError('');
@@ -146,33 +131,15 @@ function ExportContent() {
     });
 
     try {
-      // Step 1: Merge variables
-      const originalFile = base64ToFile(parsedFileInfo.base64, parsedFileInfo.name);
-      const mergeFormData = new FormData();
-      mergeFormData.append('file', originalFile);
-      mergeFormData.append('variables', JSON.stringify(variableValues));
+      let finalBlob: Blob;
+      let finalFilename = uploadedFile?.name ? `${uploadedFile.name.replace('.docx', '')}_filled` : 'document_filled';
 
-      const mergeResponse = await fetch('/api/documents/merge-variables', {
-        method: 'POST',
-        body: mergeFormData,
-      });
-
-      if (!mergeResponse.ok) {
-        throw new Error(`Merge failed: ${mergeResponse.statusText}`);
-      }
-
-      let finalBlob = await mergeResponse.blob();
-      let finalFilename = `${parsedFileInfo.name.replace('.docx', '')}_filled`;
-
-      // Step 2: Format document if auto-formatting is enabled
-      if (autoFormat) {
+      if (autoFormat && documentId) {
+        // Step 1: Format the existing document using document_id
         setExportStep('formatting');
 
         const formatFormData = new FormData();
-        const mergedFile = new File([finalBlob], `${finalFilename}.docx`, {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        });
-        formatFormData.append('file', mergedFile);
+        formatFormData.append('document_id', documentId);
 
         const formatResponse = await fetch('/api/documents/format', {
           method: 'POST',
@@ -185,9 +152,21 @@ function ExportContent() {
 
         finalBlob = await formatResponse.blob();
         finalFilename += '_formatted';
+
+        // Update document ID to the formatted version
+        const newDocumentId = formatResponse.headers.get('X-Document-ID');
+        if (newDocumentId) {
+          console.log('Formatted document created:', newDocumentId);
+        }
+      } else {
+        // Use the existing merged document
+        if (!mergedDocumentBlob) {
+          throw new Error('No document available for download. Please try regenerating the document.');
+        }
+        finalBlob = mergedDocumentBlob;
       }
 
-      // Step 3: Prepare download
+      // Step 2: Prepare download
       setExportStep('downloading');
       const url = window.URL.createObjectURL(finalBlob);
       setDownloadUrl(url);
@@ -235,13 +214,18 @@ function ExportContent() {
     sessionStorage.removeItem('uploaded-file');
     sessionStorage.removeItem('detected-variables');
     sessionStorage.removeItem('variable-values');
-    
+    sessionStorage.removeItem('merged-document');
+
     // Redirect to dashboard
     router.push('/dashboard');
   };
 
   const handleGoBack = () => {
-    router.push('/generate/fill');
+    if (templateId) {
+      router.push(`/generate/fill?template=${templateId}`);
+    } else {
+      router.push('/templates');
+    }
   };
 
   if (isLoading) {
@@ -286,24 +270,24 @@ function ExportContent() {
               <Link href="/dashboard" className="text-card-foreground text-xl font-semibold hover:text-primary transition-colors">
                 Docko
               </Link>
-              
+
               <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
                 <Link href="/dashboard" className="hover:text-foreground transition-colors">
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link href="/generate/upload" className="hover:text-foreground transition-colors">
-                  Upload
+                <Link href="/templates" className="hover:text-foreground transition-colors">
+                  Templates
                 </Link>
                 <span>/</span>
-                <Link href="/generate/fill" className="hover:text-foreground transition-colors">
+                <Link href={`/generate/fill?template=${templateId}`} className="hover:text-foreground transition-colors">
                   Fill Variables
                 </Link>
                 <span>/</span>
                 <span>Export Document</span>
               </div>
             </div>
-            
+
             <UserMenu />
           </div>
         </div>
@@ -313,16 +297,16 @@ function ExportContent() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Stepper */}
         <div className="mb-8">
-          <Stepper 
-            currentStep={3} 
+          <Stepper
+            currentStep={3}
             steps={DOCUMENT_GENERATION_STEPS}
             className="max-w-2xl mx-auto"
           />
         </div>
 
         <div className="mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={handleGoBack}
             className="mb-4"
             disabled={isExporting}
@@ -330,7 +314,7 @@ function ExportContent() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Fill Variables
           </Button>
-          
+
           <h1 className="text-3xl font-semibold text-foreground mb-2">
             Export Your Document
           </h1>
@@ -351,7 +335,7 @@ function ExportContent() {
                 <p className="text-muted-foreground mb-8">
                   Your personalized document has been generated and downloaded.
                 </p>
-                
+
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   {downloadUrl && (
                     <a
@@ -363,7 +347,7 @@ function ExportContent() {
                       Download Again
                     </a>
                   )}
-                  
+
                   <Button variant="outline" onClick={handleStartNew}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Create Another Document
@@ -419,7 +403,7 @@ function ExportContent() {
                         />
                         <span className="text-sm">DOCX (Editable)</span>
                       </label>
-                      
+
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
@@ -468,7 +452,7 @@ function ExportContent() {
 
                   {/* Generate Button with Progress States */}
                   <div className="pt-4">
-                    <Button 
+                    <Button
                       onClick={handleExport}
                       disabled={isExporting}
                       size="lg"
@@ -494,7 +478,7 @@ function ExportContent() {
                   {isExporting && (
                     <div className="mt-4 text-center">
                       <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-                        
+
                         {autoFormat && (
                           <>
                             <div className="h-px w-8 bg-border" />
@@ -510,7 +494,7 @@ function ExportContent() {
                             </div>
                           </>
                         )}
-                        
+
                         <div className="h-px w-8 bg-border" />
                         <div className={`flex items-center gap-2 ${exportStep === 'downloading' ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                           {exportStep === 'downloading' ? (
@@ -560,10 +544,17 @@ function ExportContent() {
                     </div>
                   )}
 
+                  {documentId && (
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Document ID</p>
+                      <p className="text-xs text-muted-foreground font-mono">{documentId}</p>
+                    </div>
+                  )}
+
                   <div className="pt-4 border-t border-border">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleStartNew}
                       className="w-full"
                     >

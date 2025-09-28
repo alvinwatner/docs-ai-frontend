@@ -37,7 +37,10 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': 'attachment; filename="merged_document.docx"',
+        'Content-Disposition': response.headers.get('Content-Disposition') || 'attachment; filename="merged_document.docx"',
+        'X-Document-ID': response.headers.get('X-Document-ID') || '',
+        'X-Template-ID': response.headers.get('X-Template-ID') || '',
+        'X-Variables-Count': response.headers.get('X-Variables-Count') || '0',
       },
     });
 

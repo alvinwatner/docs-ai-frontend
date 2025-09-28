@@ -1,28 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
-import { ArrowLeft, ArrowRight, Plus, Trash2, Hash, List } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Trash2, Hash, List, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { trackDocumentEvent } from '@/lib/hotjar';
-
-interface DetectedVariables {
-  simple: string[];
-  sections: string[];
-  total_count: number;
-}
-
-interface UploadedFile {
-  name: string;
-  size: number;
-  type: string;
-}
+import { managementApi } from '@/lib/management-api';
+import useSWR from 'swr';
 
 interface TableRow {
   key: string;
@@ -38,6 +29,42 @@ interface VariableValues {
   [key: string]: string | SectionData[];
 }
 
+// Custom hook for template fetching with SWR
+const useTemplate = (templateId: string | null) => {
+  return useSWR(
+    templateId ? `/api/management/templates/${templateId}` : null,
+    () => managementApi.templates.get(templateId!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30000, // 30 seconds
+      shouldRetryOnError: true,
+      errorRetryCount: 3,
+      errorRetryInterval: 2000
+    }
+  );
+};
+
+// Error handling strategy
+const handleTemplateError = (error: Error, templateId: string, router: ReturnType<typeof useRouter>) => {
+  trackDocumentEvent('UPLOAD_ERROR', {
+    templateId,
+    error: error.message,
+    context: 'template_load'
+  });
+
+  console.error('Template loading error:', error);
+
+  // Graceful fallback options
+  if (error.message.includes('404') || error.message.includes('not found')) {
+    router.push('/templates?error=not-found');
+  } else if (error.message.includes('Network')) {
+    // Network errors are handled by SWR retry mechanism
+    return;
+  } else {
+    router.push('/templates?error=load-failed');
+  }
+};
+
 export default function FillPage() {
   return (
     <AuthGuard>
@@ -49,56 +76,59 @@ export default function FillPage() {
 function FillContent() {
   const { } = useUser();
   const router = useRouter();
-  const [variables, setVariables] = useState<DetectedVariables | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const templateId = searchParams.get('template');
+
+  // Use SWR for template fetching
+  const { data: template, error, isLoading, mutate } = useTemplate(templateId);
+
   const [variableValues, setVariableValues] = useState<VariableValues>({});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isPerformingMerge, setIsPerformingMerge] = useState(false);
 
+  // Handle template loading errors
   useEffect(() => {
-    // Retrieve stored data from previous steps
-    const storedVariables = sessionStorage.getItem('detected-variables');
-    const storedFile = sessionStorage.getItem('uploaded-file');
+    if (error && templateId) {
+      handleTemplateError(error, templateId, router);
+    }
+  }, [error, templateId, router]);
 
-    if (!storedVariables || !storedFile) {
-      // Redirect back to upload if no data found
+  // Redirect if no template ID provided
+  useEffect(() => {
+    if (!templateId) {
       router.push('/generate/upload');
       return;
     }
+  }, [templateId, router]);
 
-    try {
-      const parsedVariables = JSON.parse(storedVariables);
-      const parsedFile = JSON.parse(storedFile);
-      
-      setVariables(parsedVariables);
-      setUploadedFile(parsedFile);
-      
-      // Initialize variable values
+  // Initialize variable values when template loads
+  useEffect(() => {
+    if (template) {
       const initialValues: VariableValues = {};
-      
+
       // Initialize simple variables with empty strings
-      parsedVariables.simple.forEach((variable: string) => {
+      template.variables_detected.simple.forEach((variable: string) => {
         initialValues[variable] = '';
       });
-      
+
       // Initialize section variables with empty array
-      parsedVariables.sections.forEach((variable: string) => {
+      template.variables_detected.sections.forEach((variable: string) => {
         initialValues[variable] = [{
           title: '',
           table_rows: [{ key: '', value: '' }]
         }];
       });
-      
+
       setVariableValues(initialValues);
-    } catch (error) {
-      console.error('Error parsing stored data:', error);
-      router.push('/generate/upload');
-      return;
-    } finally {
-      setIsLoading(false);
+
+      // Track successful template load
+      trackDocumentEvent('VARIABLES_DETECTED', {
+        templateId: template.id,
+        variableCount: template.variables_detected.total_count,
+        context: 'template_reuse'
+      });
     }
-  }, [router]);
+  }, [template]);
 
   const handleSimpleVariableChange = (variable: string, value: string) => {
     setVariableValues(prev => ({
@@ -223,17 +253,17 @@ function FillContent() {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    
+
     // Validate simple variables
-    if (variables) {
-      variables.simple.forEach(variable => {
+    if (template) {
+      template.variables_detected.simple.forEach(variable => {
         const value = variableValues[variable] as string;
         if (!value || value.trim() === '') {
           newErrors[variable] = 'This field is required';
         }
       });
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -246,25 +276,24 @@ function FillContent() {
     setIsPerformingMerge(true);
 
     try {
-      // Store filled values for the next step
-      sessionStorage.setItem('variable-values', JSON.stringify(variableValues));
-
       // Track variables filled
       trackDocumentEvent('VARIABLES_FILLED', {
-        totalVariables: variables?.total_count || 0,
-        filledCount: Object.keys(variableValues).length
+        totalVariables: template?.variables_detected.total_count || 0,
+        filledCount: Object.keys(variableValues).length,
+        templateId: template?.id
       });
 
       // Track merge start
       trackDocumentEvent('MERGE_STARTED');
 
-      // Trigger early merge for preview
-      await performEarlyMerge();
+      // Perform merge and get document ID
+      const documentId = await performMerge();
 
       // Track successful merge
       trackDocumentEvent('MERGE_COMPLETED');
 
-      router.push('/generate/export');
+      // Navigate with URL parameters instead of sessionStorage
+      router.push(`/generate/export?template=${template?.id}&document=${documentId}`);
     } catch (error) {
       console.error('Error during merge:', error);
 
@@ -273,81 +302,157 @@ function FillContent() {
         error: error instanceof Error ? error.message : 'Unknown merge error'
       });
 
-      // Don't block navigation even if early merge fails
-      router.push('/generate/export');
+      // Navigate to export page even if merge fails (for error handling)
+      router.push(`/generate/export?template=${template?.id}`);
     } finally {
       setIsPerformingMerge(false);
     }
   };
 
-  // Helper function to convert base64 to File object
-  const base64ToFile = (base64String: string, filename: string): File => {
-    const arr = base64String.split(',');
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
+
+  const performMerge = async (): Promise<string> => {
+    if (!template || !variableValues) {
+      throw new Error('Template or variable values not available');
     }
-    return new File([u8arr], filename, { type: mime });
-  };
 
-  const performEarlyMerge = async () => {
-    try {
-      const storedFile = sessionStorage.getItem('uploaded-file');
-      if (!storedFile || !variableValues) return;
+    // Store data for export page
+    sessionStorage.setItem('variable-values', JSON.stringify(variableValues));
+    sessionStorage.setItem('detected-variables', JSON.stringify(template.variables_detected));
+    sessionStorage.setItem('uploaded-file', JSON.stringify({
+      name: template.original_filename,
+      size: template.file_size_bytes,
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    }));
 
-      const parsedFileInfo: UploadedFile & { base64?: string } = JSON.parse(storedFile);
+    // Prepare form data for merge API with template reference
+    const mergeFormData = new FormData();
+    mergeFormData.append('variables', JSON.stringify(variableValues));
+    mergeFormData.append('template_id', template.id);
 
-      if (!parsedFileInfo.base64) {
-        console.warn('No file data found for early merge');
-        return;
-      }
+    // Call merge API via Next.js API route
+    const mergeResponse = await fetch('/api/documents/merge-variables', {
+      method: 'POST',
+      body: mergeFormData,
+    });
 
-      // Convert base64 to File object
-      const originalFile = base64ToFile(parsedFileInfo.base64, parsedFileInfo.name);
-
-      // Prepare form data for merge API
-      const mergeFormData = new FormData();
-      mergeFormData.append('file', originalFile);
-      mergeFormData.append('variables', JSON.stringify(variableValues));
-
-      // Call merge API via Next.js API route
-      const mergeResponse = await fetch('/api/documents/merge-variables', {
-        method: 'POST',
-        body: mergeFormData,
-      });
-
-      if (!mergeResponse.ok) {
-        console.warn('Early merge failed:', mergeResponse.statusText);
-        return;
-      }
-
-      // Store merged document blob
-      const mergedBlob = await mergeResponse.blob();
-
-      // Convert blob to base64 for storage
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64Data = reader.result as string;
-        // Store as JSON object to match export page expectation
-        sessionStorage.setItem('merged-document', JSON.stringify({ data: base64Data }));
-        console.log('Successfully stored merged document for preview');
-      };
-      reader.readAsDataURL(mergedBlob);
-
-    } catch (error) {
-      console.warn('Early merge failed:', error);
-      // Don't block navigation if early merge fails
+    if (!mergeResponse.ok) {
+      throw new Error(`Merge failed: ${mergeResponse.statusText}`);
     }
+
+    // Extract document ID from response headers
+    const documentId = mergeResponse.headers.get('X-Document-ID');
+    if (!documentId) {
+      throw new Error('Document ID not returned from merge API');
+    }
+
+    // Store merged document blob for preview
+    const mergedBlob = await mergeResponse.blob();
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = reader.result as string;
+      sessionStorage.setItem('merged-document', JSON.stringify({ data: base64Data }));
+      console.log('Successfully stored merged document for preview');
+    };
+    reader.readAsDataURL(mergedBlob);
+
+    console.log('Successfully merged variables and created document:', documentId);
+    return documentId;
   };
 
   const handleGoBack = () => {
-    router.push('/generate/upload');
+    router.push('/templates');
   };
 
-  if (isLoading) {
+  // Enhanced loading state with skeletons
+  if (isLoading || !template) {
+    return (
+      <div className="bg-background min-h-screen">
+        <header className="border-border bg-card border-b">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center gap-8">
+                <Link href="/dashboard" className="text-card-foreground text-xl font-semibold hover:text-primary transition-colors">
+                  Docko
+                </Link>
+
+                <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                  <Link href="/dashboard" className="hover:text-foreground transition-colors">
+                    Dashboard
+                  </Link>
+                  <span>/</span>
+                  <Skeleton className="h-4 w-16" />
+                  <span>/</span>
+                  <span>Fill Variables</span>
+                </div>
+              </div>
+
+              <UserMenu />
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          {/* Stepper skeleton */}
+          <div className="mb-8">
+            <Skeleton className="h-16 w-full max-w-2xl mx-auto" />
+          </div>
+
+          <div className="mb-8">
+            <Skeleton className="h-6 w-32 mb-4" /> {/* Back button */}
+            <Skeleton className="h-8 w-64 mb-2" /> {/* Template name */}
+            <Skeleton className="h-4 w-96" /> {/* Description */}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Form skeletons - Takes 3 columns */}
+            <div className="lg:col-span-3 space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" /> {/* Variables title */}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-32" /> {/* Variable label */}
+                      <Skeleton className="h-10 w-full" /> {/* Input field */}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Continue button skeleton */}
+              <div className="flex justify-center pt-6">
+                <Skeleton className="h-12 w-48" />
+              </div>
+            </div>
+
+            {/* Sidebar skeleton */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-20" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <Skeleton className="h-6 w-6 rounded-full" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show error state if template failed to load
+  if (error) {
     return (
       <div className="bg-background min-h-screen">
         <header className="border-border bg-card border-b">
@@ -364,19 +469,26 @@ function FillContent() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading variables...</p>
-            </div>
-          </div>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+              <h3 className="text-lg font-medium mb-2">Failed to Load Template</h3>
+              <p className="text-muted-foreground mb-6">
+                We couldn&apos;t load the template data. Please try again or contact support if the problem persists.
+              </p>
+              <div className="flex justify-center gap-4">
+                <Button onClick={() => mutate()} variant="outline">
+                  Retry
+                </Button>
+                <Button onClick={() => router.push('/templates')}>
+                  Back to Templates
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
-  }
-
-  if (!variables || !uploadedFile) {
-    return null;
   }
 
   return (
@@ -395,8 +507,8 @@ function FillContent() {
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link href="/generate/upload" className="hover:text-foreground transition-colors">
-                  Upload
+                <Link href="/templates" className="hover:text-foreground transition-colors">
+                  Templates
                 </Link>
                 <span>/</span>
                 <span>Fill Variables</span>
@@ -426,14 +538,14 @@ function FillContent() {
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Upload
+            Back to Templates
           </Button>
           
           <h1 className="text-3xl font-semibold text-foreground mb-2">
-            Fill Variable Values
+            Fill Variables: {template.name}
           </h1>
           <p className="text-muted-foreground">
-            Enter values for each variable found in your template.
+            Enter values for the {template.variables_detected.total_count} variable{template.variables_detected.total_count !== 1 ? 's' : ''} found in your template.
           </p>
         </div>
 
@@ -441,16 +553,16 @@ function FillContent() {
           {/* Form - Takes 3 columns */}
           <div className="lg:col-span-3 space-y-6">
             {/* Simple Variables */}
-            {variables.simple.length > 0 && (
+            {template.variables_detected.simple.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Hash className="h-5 w-5" />
-                    Simple Variables ({variables.simple.length})
+                    Simple Variables ({template.variables_detected.simple.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {variables.simple.map((variable, index) => (
+                  {template.variables_detected.simple.map((variable, index) => (
                     <div key={index} className="space-y-2">
                       <label className="text-sm font-medium text-foreground">
                         {`{{${variable}}}`}
@@ -472,7 +584,7 @@ function FillContent() {
             )}
 
             {/* Section Variables */}
-            {variables.sections.map((sectionVariable, sectionVarIndex) => (
+            {template.variables_detected.sections.map((sectionVariable, sectionVarIndex) => (
               <Card key={sectionVarIndex}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -481,11 +593,12 @@ function FillContent() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {(variableValues[sectionVariable] as SectionData[]).map((section, sectionIndex) => (
+                  {variableValues[sectionVariable] && Array.isArray(variableValues[sectionVariable]) ? (
+                    (variableValues[sectionVariable] as SectionData[]).map((section, sectionIndex) => (
                     <div key={sectionIndex} className="space-y-4 p-4 border border-border rounded-lg">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium">Section {sectionIndex + 1}</h4>
-                        {(variableValues[sectionVariable] as SectionData[]).length > 1 && (
+                        {variableValues[sectionVariable] && (variableValues[sectionVariable] as SectionData[]).length > 1 && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -549,8 +662,15 @@ function FillContent() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  ))
+                  ) : (
+                    // Loading state for section variables
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground text-sm">Initializing section variables...</p>
+                    </div>
+                  )}
 
+                  {variableValues[sectionVariable] && (
                   <Button
                     variant="outline"
                     onClick={() => addSection(sectionVariable)}
@@ -559,6 +679,7 @@ function FillContent() {
                     <Plus className="h-4 w-4" />
                     Add Section
                   </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -610,7 +731,7 @@ function FillContent() {
                   <div>
                     <p className="text-sm font-medium text-foreground">Fill Variables</p>
                     <p className="text-xs text-muted-foreground">
-                      {variables.total_count} variable{variables.total_count !== 1 ? 's' : ''} to fill
+                      {template.variables_detected.total_count} variable{template.variables_detected.total_count !== 1 ? 's' : ''} to fill
                     </p>
                   </div>
                 </div>

@@ -27,14 +27,9 @@ interface VariableDetectionResponse {
   simple: string[];
   sections: string[];
   total_count: number;
+  template_id?: string;
 }
 
-interface UploadedFileInfo {
-  name: string;
-  size: number;
-  type: string;
-  base64?: string; // Optional for backward compatibility
-}
 
 export default function UploadPage() {
   return (
@@ -99,13 +94,7 @@ function UploadContent() {
     setUploadError('');
 
     try {
-      // Convert file to base64 for storage
-      const fileBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+
 
       // Make direct API call (with or without token for testing)
       const formData = new FormData();
@@ -122,21 +111,8 @@ function UploadContent() {
 
       const variables: VariableDetectionResponse = await response.json();
 
-      // Store the file (with base64 content) and variables in sessionStorage
-      const fileInfo: UploadedFileInfo & { base64: string } = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        base64: fileBase64,
-      };
-
-      try {
-        sessionStorage.setItem('uploaded-file', JSON.stringify(fileInfo));
-        sessionStorage.setItem('detected-variables', JSON.stringify(variables));
-      } catch {
-        throw new Error(
-          'File too large for storage. Please use a smaller file (recommended: under 5MB).'
-        );
+      if (!variables.template_id) {
+        throw new Error('Template was not saved properly. Please try again.');
       }
 
       // Set local state to show variables inline
@@ -170,7 +146,7 @@ function UploadContent() {
     } finally {
       setIsUploading(false);
     }
-  }, []);
+  }, [user, userError, userLoading]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -430,7 +406,7 @@ function UploadContent() {
                     {/* Continue Button */}
                     <div className="flex justify-center pt-4">
                       <Button
-                        onClick={() => router.push('/generate/fill')}
+                        onClick={() => router.push(`/generate/fill?template=${detectedVariables.template_id}`)}
                         size="lg"
                         className="flex items-center gap-2"
                       >

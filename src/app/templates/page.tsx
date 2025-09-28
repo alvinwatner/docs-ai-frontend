@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export default function TemplatesPage() {
 }
 
 function TemplatesContent() {
+  const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +64,7 @@ function TemplatesContent() {
     setLoadingStates(prev => ({ ...prev, [templateId]: 'use' }));
     try {
       // Navigate to generation flow with template pre-selected
-      window.location.href = `/generate/template/${templateId}`;
+      router.push(`/generate/template/${templateId}`);
     } catch (error) {
       console.error('Failed to use template:', error);
     } finally {
