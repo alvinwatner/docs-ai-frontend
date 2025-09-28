@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FileText, Upload, BookOpen, HelpCircle, ArrowRight, Target, CheckCircle } from 'lucide-react';
+import { FileText, Upload, BookOpen, HelpCircle, ArrowRight, ArrowDown, Target, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function FirstTimeUserDashboard() {
@@ -52,7 +52,54 @@ export default function FirstTimeUserDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Desktop Layout */}
+            <div className="hidden md:flex items-center justify-between max-w-4xl mx-auto">
+              {/* Step 1 */}
+              <div className="text-center flex-1">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-full text-xl font-bold mb-4">
+                  1
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Upload Template</h3>
+                <p className="text-muted-foreground text-sm">
+                  Upload your DOCX template with {`{{variable}}`} placeholders where you want dynamic content.
+                </p>
+              </div>
+
+              {/* Arrow 1 */}
+              <div className="flex items-center justify-center px-4">
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+              </div>
+
+              {/* Step 2 */}
+              <div className="text-center flex-1">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-full text-xl font-bold mb-4">
+                  2
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Fill Variables</h3>
+                <p className="text-muted-foreground text-sm">
+                  Fill in your custom values for each variable detected in your template.
+                </p>
+              </div>
+
+              {/* Arrow 2 */}
+              <div className="flex items-center justify-center px-4">
+                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+              </div>
+
+              {/* Step 3 */}
+              <div className="text-center flex-1">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-full text-xl font-bold mb-4">
+                  3
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Download Document</h3>
+                <p className="text-muted-foreground text-sm">
+                  Download your personalized document in DOCX or PDF format.
+                </p>
+              </div>
+            </div>
+
+            {/* Mobile Layout */}
+            <div className="md:hidden space-y-6">
               {/* Step 1 */}
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-primary text-primary-foreground rounded-full text-xl font-bold mb-4">
@@ -64,9 +111,9 @@ export default function FirstTimeUserDashboard() {
                 </p>
               </div>
 
-              {/* Arrow */}
-              <div className="hidden md:flex items-center justify-center">
-                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+              {/* Arrow Down */}
+              <div className="flex items-center justify-center">
+                <ArrowDown className="h-6 w-6 text-muted-foreground" />
               </div>
 
               {/* Step 2 */}
@@ -80,9 +127,9 @@ export default function FirstTimeUserDashboard() {
                 </p>
               </div>
 
-              {/* Arrow */}
-              <div className="hidden md:flex items-center justify-center">
-                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+              {/* Arrow Down */}
+              <div className="flex items-center justify-center">
+                <ArrowDown className="h-6 w-6 text-muted-foreground" />
               </div>
 
               {/* Step 3 */}
