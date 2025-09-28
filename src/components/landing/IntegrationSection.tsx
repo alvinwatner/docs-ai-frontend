@@ -167,16 +167,33 @@ export default function IntegrationSection({ id, isVisible }: LandingSectionProp
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-center mt-16"
         >
-          <div className="bg-gradient-to-r from-purple-500 to-blue-600 rounded-2xl p-8 text-white max-w-4xl mx-auto">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold mb-4">
-              Ready to Connect Your Systems?
+              Enterprise Plan: Tailored Integration Solutions
             </h3>
-            <p className="text-purple-100 text-lg mb-6">
-              Our integration specialists will help you connect DocuFlow to your existing 
-              business systems in under 2 hours.
+            <p className="text-blue-100 text-lg mb-6">
+              Our specialists will analyze your existing systems and provide custom integration
+              solutions. Perfect for organizations with complex workflows and security requirements.
             </p>
-            <button className="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200">
-              Schedule Integration Call
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Custom Analysis</h4>
+                <p className="text-sm text-blue-100">We study your current systems and workflows</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Tailored Integration</h4>
+                <p className="text-sm text-blue-100">Bespoke connectors built for your stack</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Ongoing Support</h4>
+                <p className="text-sm text-blue-100">Dedicated team for maintenance & updates</p>
+              </div>
+            </div>
+            <button
+              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200"
+              onClick={() => window.location.href = 'mailto:sales@docko.com?subject=Enterprise Integration Consultation'}
+            >
+              Schedule Enterprise Consultation
             </button>
           </div>
         </motion.div>

@@ -20,7 +20,7 @@ import DifferentiatorSection from '@/components/landing/DifferentiatorSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import CaseStudySection from '@/components/landing/CaseStudySection';
 import IntegrationSection from '@/components/landing/IntegrationSection';
-import CTASection from '@/components/landing/CTASection';
+import PricingSection from '@/components/landing/PricingSection';
 
 export default function HomePage() {
   const { user, isLoading } = useUser();
@@ -38,7 +38,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['hero', 'problem', 'solution', 'differentiator', 'benefits', 'case-study', 'integrations', 'cta'];
+      const sections = ['hero', 'problem', 'solution', 'differentiator', 'benefits', 'case-study', 'integrations', 'pricing'];
       
       sections.forEach(section => {
         const element = document.getElementById(section);
@@ -100,25 +100,31 @@ export default function HomePage() {
               </div>
               {/* Desktop Navigation */}
               <div className="hidden md:flex items-center gap-8">
-                <button 
+                <button
                   onClick={() => scrollToSection('solution')}
                   className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   How It Works
                 </button>
-                <button 
+                <button
                   onClick={() => scrollToSection('benefits')}
                   className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Benefits
                 </button>
-                <button 
-                  onClick={() => scrollToSection('case-study')}
+                <button
+                  onClick={() => scrollToSection('pricing')}
                   className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  Results
+                  Pricing
                 </button>
-                <Button 
+                <button
+                  onClick={() => scrollToSection('integrations')}
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Enterprise
+                </button>
+                <Button
                   className="bg-blue-600 hover:bg-blue-700"
                   onClick={handleGetStarted}
                 >
@@ -146,7 +152,8 @@ export default function HomePage() {
                 <div className="px-6 py-4 flex flex-col items-center gap-4">
                   <button onClick={() => scrollToSection('solution')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">How It Works</button>
                   <button onClick={() => scrollToSection('benefits')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Benefits</button>
-                  <button onClick={() => scrollToSection('case-study')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Results</button>
+                  <button onClick={() => scrollToSection('pricing')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Pricing</button>
+                  <button onClick={() => scrollToSection('integrations')} className="text-gray-600 hover:text-gray-900 w-full py-2 text-lg">Enterprise</button>
                   <Button onClick={handleGetStarted} className="w-full bg-blue-600 hover:bg-blue-700 text-lg">Get Started</Button>
                 </div>
               </motion.div>
@@ -162,8 +169,8 @@ export default function HomePage() {
           <DifferentiatorSection id="differentiator" isVisible={isVisible.differentiator} />
           <BenefitsSection id="benefits" isVisible={isVisible.benefits} />
           <CaseStudySection id="case-study" isVisible={isVisible['case-study']} />
+          <PricingSection id="pricing" isVisible={isVisible.pricing} />
           <IntegrationSection id="integrations" isVisible={isVisible.integrations} />
-          <CTASection id="cta" isVisible={isVisible.cta} />
         </div>
 
         {/* Footer */}
