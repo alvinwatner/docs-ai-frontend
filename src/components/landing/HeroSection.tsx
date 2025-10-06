@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { LandingSectionProps } from './types';
 import { Button } from "@/components/ui/button";
 import { Play, ArrowRight, FileText, Zap } from 'lucide-react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 export default function HeroSection({ id, isVisible }: LandingSectionProps) {
@@ -89,6 +90,28 @@ export default function HeroSection({ id, isVisible }: LandingSectionProps) {
                 <Play className="w-5 h-5 mr-2" />
                 Watch Demo (30s)
               </Button>
+            </motion.div>
+
+            {/* Product Hunt Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.7 }}
+              className="flex items-center justify-center lg:justify-start"
+            >
+              <a
+                href="https://www.producthunt.com/products/docko-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-docko&#0045;2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1023179&theme=light"
+                  alt="Docko - Document automation | Product Hunt"
+                  style={{ width: '250px', height: '54px' }}
+                  width={250}
+                  height={54}
+                />
+              </a>
             </motion.div>
 
             {/* Trust indicators */}
