@@ -11,7 +11,7 @@ export default function PricingSection({ id, isVisible }: LandingSectionProps) {
 
   const handleContactSales = () => {
     // You can implement contact form or redirect to calendar booking
-    window.location.href = 'mailto:sales@docko.com?subject=Enterprise Plan Inquiry';
+    window.location.href = 'mailto:alvinsetiadi22@gmail.com?subject=Enterprise Plan Inquiry';
   };
 
   const plans = [

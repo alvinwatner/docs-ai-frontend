@@ -354,7 +354,7 @@ function HelpContent() {
                 <Mail className="h-5 w-5 text-primary mt-1" />
                 <div>
                   <h4 className="font-semibold mb-1">Email Support</h4>
-                  <p className="text-sm text-muted-foreground">sales@docko.com</p>
+                  <p className="text-sm text-muted-foreground">alvinsetiadi22@gmail.com</p>
                   <p className="text-xs text-muted-foreground">Response within 2 hours</p>
                 </div>
               </div>

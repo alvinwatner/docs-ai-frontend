@@ -191,7 +191,7 @@ export default function IntegrationSection({ id, isVisible }: LandingSectionProp
             </div>
             <button
               className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200"
-              onClick={() => window.location.href = 'mailto:sales@docko.com?subject=Enterprise Integration Consultation'}
+              onClick={() => window.location.href = 'mailto:sales@alvinsetiadi22@gmail.com?subject=Enterprise Integration Consultation'}
             >
               Schedule Enterprise Consultation
             </button>
