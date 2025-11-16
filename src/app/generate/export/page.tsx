@@ -8,7 +8,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
 import { DocumentPreview } from '@/components/document-preview';
-import { ArrowLeft, Download, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Download,
+  CheckCircle2,
+  RotateCcw,
+  AlertCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { trackDocumentEvent } from '@/lib/hotjar';
@@ -44,7 +50,7 @@ export default function ExportPage() {
 }
 
 function ExportContent() {
-  const { } = useUser();
+  const {} = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -56,14 +62,13 @@ function ExportContent() {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [variableValues, setVariableValues] = useState<VariableValues>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [exportFormat, setExportFormat] = useState<'docx' | 'pdf'>('docx');
-  const [autoFormat, setAutoFormat] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState('');
-  const [exportStep, setExportStep] = useState<'idle' | 'merging' | 'formatting' | 'downloading'>('idle');
-  const [mergedDocumentBlob, setMergedDocumentBlob] = useState<Blob | null>(null);
+  const [mergedDocumentBlob, setMergedDocumentBlob] = useState<Blob | null>(
+    null
+  );
   const [previewError, setPreviewError] = useState<string>('');
 
   useEffect(() => {
@@ -101,12 +106,16 @@ function ExportContent() {
             byteNumbers[i] = byteCharacters.charCodeAt(i);
           }
           const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          const blob = new Blob([byteArray], {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
           setMergedDocumentBlob(blob);
           setPreviewError(''); // Clear any previous preview errors
         } catch (error) {
           console.error('Error loading merged document for preview:', error);
-          setPreviewError('Failed to load document preview. The merged document may be corrupted.');
+          setPreviewError(
+            'Failed to load document preview. The merged document may be corrupted.'
+          );
         }
       }
     } catch (error) {
@@ -126,86 +135,190 @@ function ExportContent() {
 
     // Track export start
     trackDocumentEvent('EXPORT_STARTED', {
-      format: exportFormat,
-      autoFormatEnabled: autoFormat
+      format: 'docx',
+      autoFormatEnabled: true,
     });
 
     try {
       let finalBlob: Blob;
-      let finalFilename = uploadedFile?.name ? `${uploadedFile.name.replace('.docx', '')}_filled` : 'document_filled';
+      const finalFilename = uploadedFile?.name
+        ? `${uploadedFile.name.replace('.docx', '')}_filled`
+        : 'document_filled';
 
-      if (autoFormat && documentId) {
-        // Step 1: Format the existing document using document_id
-        setExportStep('formatting');
+      if (documentId && mergedDocumentBlob) {
+        // Step 1: Start advanced formatting with live preview
 
+        // Create form data with the merged document
         const formatFormData = new FormData();
-        formatFormData.append('document_id', documentId);
+        formatFormData.append(
+          'file',
+          mergedDocumentBlob,
+          uploadedFile?.name || 'document.docx'
+        );
 
-        const formatResponse = await fetch('/api/documents/format', {
+        const formatResponse = await fetch('/api/documents/format-advanced', {
           method: 'POST',
           body: formatFormData,
         });
 
         if (!formatResponse.ok) {
-          throw new Error(`Formatting failed: ${formatResponse.statusText}`);
+          const errorData = await formatResponse.json();
+          throw new Error(
+            `Formatting failed: ${errorData.error || formatResponse.statusText}`
+          );
         }
 
-        finalBlob = await formatResponse.blob();
-        finalFilename += '_formatted';
+        const data = await formatResponse.json();
+        const sessionId = data.session_id;
 
-        // Update document ID to the formatted version
-        const newDocumentId = formatResponse.headers.get('X-Document-ID');
-        if (newDocumentId) {
-          console.log('Formatted document created:', newDocumentId);
+        if (!sessionId) {
+          throw new Error('No session ID returned from formatting service');
         }
+
+        // Redirect to live preview page with session ID and template ID
+        router.push(
+          `/generate/format-live?session=${sessionId}&template=${templateId}`
+        );
+        return; // Exit early, no download here
       } else {
         // Use the existing merged document
         if (!mergedDocumentBlob) {
-          throw new Error('No document available for download. Please try regenerating the document.');
+          throw new Error(
+            'No document available for download. Please try regenerating the document.'
+          );
         }
         finalBlob = mergedDocumentBlob;
       }
 
       // Step 2: Prepare download
-      setExportStep('downloading');
       const url = window.URL.createObjectURL(finalBlob);
       setDownloadUrl(url);
       setExportSuccess(true);
 
       // Track successful export
       trackDocumentEvent('EXPORT_COMPLETED', {
-        format: exportFormat,
-        autoFormatted: autoFormat,
-        filename: finalFilename
+        format: 'docx',
+        autoFormatted: true,
+        filename: finalFilename,
       });
 
       // Track download
       trackDocumentEvent('DOWNLOAD_INITIATED', {
-        format: exportFormat,
-        filename: finalFilename
+        format: 'docx',
+        filename: finalFilename,
       });
 
       // Auto-download the file
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${finalFilename}.${exportFormat === 'pdf' ? 'pdf' : 'docx'}`;
+      link.download = `${finalFilename}.docx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Export failed';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Export failed';
       setExportError(errorMessage);
 
       // Track export error
       trackDocumentEvent('EXPORT_ERROR', {
         error: errorMessage,
-        format: exportFormat,
-        autoFormatted: autoFormat
+        format: 'docx',
+        autoFormatted: true,
       });
     } finally {
       setIsExporting(false);
-      setExportStep('idle');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!mergedDocumentBlob) {
+      setExportError('No document available for download');
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError('');
+
+    try {
+      // Create form data with the merged document
+      const formData = new FormData();
+      formData.append(
+        'file',
+        mergedDocumentBlob,
+        uploadedFile?.name || 'document.docx'
+      );
+
+      // Call format endpoint to get PDF
+      const response = await fetch('/api/documents/format', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Get the blob and download
+      const pdfBlob = await response.blob();
+      const filename = uploadedFile?.name
+        ? `${uploadedFile.name.replace('.docx', '')}_merged.pdf`
+        : 'document_merged.pdf';
+
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Track download
+      trackDocumentEvent('DOWNLOAD_INITIATED', {
+        format: 'pdf',
+        filename: filename,
+        formatted: false,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to download PDF';
+      setExportError(errorMessage);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadDocx = () => {
+    if (!mergedDocumentBlob) {
+      setExportError('No document available for download');
+      return;
+    }
+
+    try {
+      const filename = uploadedFile?.name
+        ? `${uploadedFile.name.replace('.docx', '')}_merged.docx`
+        : 'document_merged.docx';
+
+      const url = window.URL.createObjectURL(mergedDocumentBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Track download
+      trackDocumentEvent('DOWNLOAD_INITIATED', {
+        format: 'docx',
+        filename: filename,
+        formatted: false,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to download DOCX';
+      setExportError(errorMessage);
     }
   };
 
@@ -235,7 +348,10 @@ function ExportContent() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 items-center justify-between">
               <div className="flex items-center gap-8">
-                <Link href="/dashboard" className="text-card-foreground text-xl font-semibold hover:text-primary transition-colors">
+                <Link
+                  href="/dashboard"
+                  className="text-card-foreground hover:text-primary text-xl font-semibold transition-colors"
+                >
                   Docko
                 </Link>
               </div>
@@ -245,9 +361,9 @@ function ExportContent() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+              <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"></div>
               <p className="text-muted-foreground">Loading export options...</p>
             </div>
           </div>
@@ -267,20 +383,32 @@ function ExportContent() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link href="/dashboard" className="text-card-foreground text-xl font-semibold hover:text-primary transition-colors">
+              <Link
+                href="/dashboard"
+                className="text-card-foreground hover:text-primary text-xl font-semibold transition-colors"
+              >
                 Docko
               </Link>
 
-              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-                <Link href="/dashboard" className="hover:text-foreground transition-colors">
+              <div className="text-muted-foreground hidden items-center gap-2 text-sm md:flex">
+                <Link
+                  href="/dashboard"
+                  className="hover:text-foreground transition-colors"
+                >
                   Dashboard
                 </Link>
                 <span>/</span>
-                <Link href="/templates" className="hover:text-foreground transition-colors">
+                <Link
+                  href="/templates"
+                  className="hover:text-foreground transition-colors"
+                >
                   Templates
                 </Link>
                 <span>/</span>
-                <Link href={`/generate/fill?template=${templateId}`} className="hover:text-foreground transition-colors">
+                <Link
+                  href={`/generate/fill?template=${templateId}`}
+                  className="hover:text-foreground transition-colors"
+                >
                   Fill Variables
                 </Link>
                 <span>/</span>
@@ -300,7 +428,7 @@ function ExportContent() {
           <Stepper
             currentStep={3}
             steps={DOCUMENT_GENERATION_STEPS}
-            className="max-w-2xl mx-auto"
+            className="mx-auto max-w-2xl"
           />
         </div>
 
@@ -311,11 +439,11 @@ function ExportContent() {
             className="mb-4"
             disabled={isExporting}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Fill Variables
           </Button>
 
-          <h1 className="text-3xl font-semibold text-foreground mb-2">
+          <h1 className="text-foreground mb-2 text-3xl font-semibold">
             Export Your Document
           </h1>
           <p className="text-muted-foreground">
@@ -325,23 +453,26 @@ function ExportContent() {
 
         {exportSuccess ? (
           // Success State
-          <div className="max-w-2xl mx-auto">
+          <div className="mx-auto max-w-2xl">
             <Card>
               <CardContent className="py-12 text-center">
-                <CheckCircle2 className="mx-auto h-16 w-16 text-green-600 mb-6" />
-                <h2 className="text-2xl font-semibold text-foreground mb-4">
+                <CheckCircle2 className="mx-auto mb-6 h-16 w-16 text-green-600" />
+                <h2 className="text-foreground mb-4 text-2xl font-semibold">
                   Document Generated Successfully!
                 </h2>
                 <p className="text-muted-foreground mb-8">
                   Your personalized document has been generated and downloaded.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                   {downloadUrl && (
                     <a
                       href={downloadUrl}
-                      download={`${uploadedFile.name.replace('.docx', '')}_filled.${exportFormat}`}
-                      className={cn(buttonVariants(), "flex items-center gap-2")}
+                      download={`${uploadedFile.name.replace('.docx', '')}_filled.docx`}
+                      className={cn(
+                        buttonVariants(),
+                        'flex items-center gap-2'
+                      )}
                     >
                       <Download className="h-4 w-4" />
                       Download Again
@@ -349,7 +480,7 @@ function ExportContent() {
                   )}
 
                   <Button variant="outline" onClick={handleStartNew}>
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className="mr-2 h-4 w-4" />
                     Create Another Document
                   </Button>
                 </div>
@@ -357,13 +488,17 @@ function ExportContent() {
             </Card>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Export Options - Takes 2 columns */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 lg:col-span-2">
               {/* Document Preview */}
               <DocumentPreview
                 documentBlob={mergedDocumentBlob}
-                fileName={uploadedFile?.name ? uploadedFile.name.replace('.docx', '_merged.docx') : 'merged_document.docx'}
+                fileName={
+                  uploadedFile?.name
+                    ? uploadedFile.name.replace('.docx', '_merged.docx')
+                    : 'merged_document.docx'
+                }
                 className="h-[600px]"
               />
 
@@ -372,10 +507,14 @@ function ExportContent() {
                 <Card className="border-destructive/20 bg-destructive/10">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                      <AlertCircle className="text-destructive mt-0.5 h-5 w-5" />
                       <div>
-                        <h4 className="font-medium text-destructive">Preview Error</h4>
-                        <p className="text-sm text-destructive/80">{previewError}</p>
+                        <h4 className="text-destructive font-medium">
+                          Preview Error
+                        </h4>
+                        <p className="text-destructive/80 text-sm">
+                          {previewError}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -383,130 +522,69 @@ function ExportContent() {
               )}
 
               {/* Export Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Export Settings</CardTitle>
-                </CardHeader>
+              <Card>              
                 <CardContent className="space-y-6">
-                  {/* Format Selection */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">Export Format</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="format"
-                          value="docx"
-                          checked={exportFormat === 'docx'}
-                          onChange={(e) => setExportFormat(e.target.value as 'docx' | 'pdf')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">DOCX (Editable)</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="format"
-                          value="pdf"
-                          checked={exportFormat === 'pdf'}
-                          onChange={(e) => setExportFormat(e.target.value as 'docx' | 'pdf')}
-                          className="text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm">PDF (Read-only)</span>
-                      </label>
-                    </div>
-                  </div>
-
                   {/* Auto-formatting Option */}
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        id="auto-format"
-                        checked={autoFormat}
-                        onChange={(e) => setAutoFormat(e.target.checked)}
-                        className="mt-1"
-                      />
-                      <div>
-                        <label htmlFor="auto-format" className="text-sm font-medium text-foreground cursor-pointer">
-                          Apply automatic formatting
-                        </label>
-                        <p className="text-xs text-muted-foreground">
-                          Improve spacing, fonts, and layout for better readability
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+
 
                   {/* Error Message */}
                   {exportError && (
-                    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                    <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
+                      <AlertCircle className="text-destructive mt-0.5 h-5 w-5" />
                       <div>
-                        <h4 className="font-medium text-destructive">Export Error</h4>
-                        <p className="text-sm text-destructive/80">{exportError}</p>
+                        <h4 className="text-destructive font-medium">
+                          Export Error
+                        </h4>
+                        <p className="text-destructive/80 text-sm">
+                          {exportError}
+                        </p>
                       </div>
                     </div>
                   )}
 
-                  {/* Generate Button with Progress States */}
-                  <div className="pt-4">
+                  {/* Action Buttons */}
+                  <div className="space-y-3 pt-4">
+                    {/* Primary Button - Only show if auto-formatting is enabled */}
                     <Button
                       onClick={handleExport}
-                      disabled={isExporting}
+                      disabled={isExporting || !mergedDocumentBlob}
                       size="lg"
-                      className="w-full flex items-center gap-2"
+                      className="flex w-full items-center gap-2"
                     >
                       {isExporting ? (
                         <>
-                          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                          {exportStep === 'formatting' && 'Formatting Content...'}
-                          {exportStep === 'downloading' && 'Preparing Download...'}
-                          {exportStep === 'idle' && 'Preparing Export...'}
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Starting formatting...
                         </>
                       ) : (
-                        <>
-                          <Download className="h-4 w-4" />
-                          Generate & Download Document
-                        </>
+                        'Apply Formatting & Preview'
                       )}
                     </Button>
-                  </div>
 
-                  {/* Progress Indicator */}
-                  {isExporting && (
-                    <div className="mt-4 text-center">
-                      <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-
-                        {autoFormat && (
-                          <>
-                            <div className="h-px w-8 bg-border" />
-                            <div className={`flex items-center gap-2 ${exportStep === 'formatting' ? 'text-primary font-medium' : exportStep === 'downloading' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                              {exportStep === 'formatting' ? (
-                                <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
-                              ) : exportStep === 'downloading' ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : (
-                                <div className="h-3 w-3 border border-muted rounded-full" />
-                              )}
-                              <span>Formatting Content</span>
-                            </div>
-                          </>
-                        )}
-
-                        <div className="h-px w-8 bg-border" />
-                        <div className={`flex items-center gap-2 ${exportStep === 'downloading' ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                          {exportStep === 'downloading' ? (
-                            <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
-                          ) : (
-                            <div className="h-3 w-3 border border-muted rounded-full" />
-                          )}
-                          <span>Download Ready</span>
-                        </div>
-                      </div>
+                    {/* Secondary Buttons - Quick Downloads */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={handleDownloadPdf}
+                        disabled={isExporting || !mergedDocumentBlob}
+                        variant="outline"
+                        size="lg"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <Button
+                        onClick={handleDownloadDocx}
+                        disabled={isExporting || !mergedDocumentBlob}
+                        variant="outline"
+                        size="lg"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download DOCX
+                      </Button>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -519,46 +597,61 @@ function ExportContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Template</p>
-                    <p className="text-sm text-muted-foreground">{uploadedFile.name}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Variables Filled</p>
-                    <p className="text-sm text-muted-foreground">
-                      {variables.total_count} variable{variables.total_count !== 1 ? 's' : ''}
+                    <p className="text-foreground text-sm font-medium">
+                      Template
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {uploadedFile.name}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-foreground">Export Format</p>
-                    <p className="text-sm text-muted-foreground">
-                      {exportFormat.toUpperCase()} {exportFormat === 'docx' ? '(Editable)' : '(Read-only)'}
+                    <p className="text-foreground text-sm font-medium">
+                      Variables Filled
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {variables.total_count} variable
+                      {variables.total_count !== 1 ? 's' : ''}
                     </p>
                   </div>
 
-                  {autoFormat && (
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Formatting</p>
-                      <p className="text-sm text-muted-foreground">Auto-formatting enabled</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-foreground text-sm font-medium">
+                      Export Format
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      DOCX (Editable)
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-foreground text-sm font-medium">
+                      Formatting
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      Auto-formatting enabled
+                    </p>
+                  </div>
 
                   {documentId && (
                     <div>
-                      <p className="text-sm font-medium text-foreground">Document ID</p>
-                      <p className="text-xs text-muted-foreground font-mono">{documentId}</p>
+                      <p className="text-foreground text-sm font-medium">
+                        Document ID
+                      </p>
+                      <p className="text-muted-foreground font-mono text-xs">
+                        {documentId}
+                      </p>
                     </div>
                   )}
 
-                  <div className="pt-4 border-t border-border">
+                  <div className="border-border border-t pt-4">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleStartNew}
                       className="w-full"
                     >
-                      <RotateCcw className="h-4 w-4 mr-2" />
+                      <RotateCcw className="mr-2 h-4 w-4" />
                       Start New Document
                     </Button>
                   </div>
