@@ -9,11 +9,39 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
-import { ArrowLeft, ArrowRight, Plus, Trash2, Hash, List, AlertCircle } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Hash, List, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { trackDocumentEvent } from '@/lib/hotjar';
 import { managementApi } from '@/lib/management-api';
+import { snakeToTitle } from '@/lib/utils';
 import useSWR from 'swr';
+
+// Helper function to generate contextual placeholder examples
+const getPlaceholderExample = (variable: string): string => {
+  const lowerVar = variable.toLowerCase();
+
+  // Common variable patterns with example values
+  if (lowerVar.includes('name') && lowerVar.includes('company')) return 'Acme Corporation';
+  if (lowerVar.includes('name') && lowerVar.includes('client')) return 'John Smith';
+  if (lowerVar.includes('name') && lowerVar.includes('first')) return 'John';
+  if (lowerVar.includes('name') && lowerVar.includes('last')) return 'Smith';
+  if (lowerVar.includes('name')) return 'John Smith';
+  if (lowerVar.includes('email')) return 'john@example.com';
+  if (lowerVar.includes('phone')) return '+1 (555) 123-4567';
+  if (lowerVar.includes('address')) return '123 Main Street';
+  if (lowerVar.includes('city')) return 'San Francisco';
+  if (lowerVar.includes('state')) return 'California';
+  if (lowerVar.includes('zip') || lowerVar.includes('postal')) return '94102';
+  if (lowerVar.includes('country')) return 'United States';
+  if (lowerVar.includes('date')) return 'January 15, 2025';
+  if (lowerVar.includes('amount') || lowerVar.includes('price') || lowerVar.includes('total')) return '$1,500.00';
+  if (lowerVar.includes('number') || lowerVar.includes('id')) return '12345';
+  if (lowerVar.includes('title')) return 'Senior Manager';
+  if (lowerVar.includes('description')) return 'Brief description here...';
+
+  // Default: generate a generic example based on the variable name
+  return snakeToTitle(variable);
+};
 
 interface TableRow {
   key: string;
@@ -359,9 +387,6 @@ function FillContent() {
     return documentId;
   };
 
-  const handleGoBack = () => {
-    router.push('/templates');
-  };
 
   // Enhanced loading state with skeletons
   if (isLoading || !template) {
@@ -520,26 +545,21 @@ function FillContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Stepper */}
-        <div className="mb-8">
-          <Stepper 
-            currentStep={2} 
+      {/* Sticky Stepper */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border py-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Stepper
+            currentStep={2}
             steps={DOCUMENT_GENERATION_STEPS}
             className="max-w-2xl mx-auto"
           />
         </div>
+      </div>
 
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={handleGoBack}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Templates
-          </Button>
+       
           
           <h1 className="text-3xl font-semibold text-foreground mb-2">
             Fill Variables: {template.name}
@@ -565,13 +585,13 @@ function FillContent() {
                   {template.variables_detected.simple.map((variable, index) => (
                     <div key={index} className="space-y-2">
                       <label className="text-sm font-medium text-foreground">
-                        {`{{${variable}}}`}
+                        {snakeToTitle(variable)}
                       </label>
                       <Input
                         type="text"
                         value={(variableValues[variable] as string) || ''}
                         onChange={(e) => handleSimpleVariableChange(variable, e.target.value)}
-                        placeholder={`Enter value for ${variable}`}
+                        placeholder={`e.g., ${getPlaceholderExample(variable)}`}
                         className={errors[variable] ? 'border-destructive' : ''}
                       />
                       {errors[variable] && (
@@ -589,7 +609,8 @@ function FillContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <List className="h-5 w-5" />
-                    {`{{${sectionVariable}}}`}
+                    {snakeToTitle(sectionVariable)}
+                    <span className="text-sm font-normal text-muted-foreground">(Repeating Section)</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">

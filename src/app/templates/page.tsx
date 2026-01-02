@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -243,9 +244,35 @@ function TemplatesContent() {
 
         {/* Templates Grid */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your templates...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-full" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-9 flex-1" />
+                      <Skeleton className="h-9 w-9" />
+                      <Skeleton className="h-9 w-9" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : filteredAndSortedTemplates.length === 0 ? (
           <Card>
@@ -257,7 +284,7 @@ function TemplatesContent() {
               <p className="text-muted-foreground mb-6">
                 {searchQuery || filterCategory !== 'all'
                   ? 'Try adjusting your search or filters.'
-                  : 'Upload your first template to get started.'
+                  : 'Upload a template to start generating documents automatically.'
                 }
               </p>
               {!searchQuery && filterCategory === 'all' && (
@@ -355,12 +382,12 @@ function TemplatesContent() {
                           {isLoading === 'use' ? (
                             <>
                               <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
-                              Using...
+                              Generating...
                             </>
                           ) : (
                             <>
                               <FileText className="h-4 w-4 mr-2" />
-                              Use
+                              Generate
                             </>
                           )}
                         </Button>

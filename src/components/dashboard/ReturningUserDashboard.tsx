@@ -11,7 +11,8 @@ import {
   Star,
   ExternalLink,
   Rocket,
-  FolderOpen
+  FolderOpen,
+  BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -76,22 +77,43 @@ export default function ReturningUserDashboard({
             Ready to generate your next document? Choose from your templates below.
           </p>
 
-          {/* Primary Actions */}
+          {/* Primary Actions - Conditional based on template count */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/templates/select"
-              className={cn(buttonVariants({ size: "lg" }), "flex items-center gap-2")}
-            >
-              <Rocket className="h-5 w-5" />
-              Generate Document
-            </Link>
-            <Link
-              href="/generate/upload"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex items-center gap-2")}
-            >
-              <Upload className="h-5 w-5" />
-              Upload New Template
-            </Link>
+            {recentTemplates.length === 0 ? (
+              <>
+                <Link
+                  href="/generate/upload"
+                  className={cn(buttonVariants({ size: "lg" }), "flex items-center gap-2")}
+                >
+                  <Upload className="h-5 w-5" />
+                  Upload Template
+                </Link>
+                <Link
+                  href="/help/getting-started"
+                  className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex items-center gap-2")}
+                >
+                  <BookOpen className="h-5 w-5" />
+                  View Guide
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/templates"
+                  className={cn(buttonVariants({ size: "lg" }), "flex items-center gap-2")}
+                >
+                  <Rocket className="h-5 w-5" />
+                  Generate from Template
+                </Link>
+                <Link
+                  href="/generate/upload"
+                  className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex items-center gap-2")}
+                >
+                  <Upload className="h-5 w-5" />
+                  Upload New Template
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -167,7 +189,7 @@ export default function ReturningUserDashboard({
                                 className="flex-1"
                               >
                                 <FileText className="h-4 w-4 mr-2" />
-                                Use
+                                Generate
                               </Button>
                             </div>
                           </CardContent>

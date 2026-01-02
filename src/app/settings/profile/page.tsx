@@ -2,7 +2,7 @@
 
 import { useUser } from '@auth0/nextjs-auth0';
 import { User, Mail, Calendar, Shield } from 'lucide-react';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 
 export default function ProfilePage() {
@@ -10,8 +10,72 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <LoadingSpinner size="lg" />
+      <div className="p-6">
+        {/* Header Skeleton */}
+        <div className="mb-6">
+          <Skeleton className="h-7 w-40 mb-2" />
+          <Skeleton className="h-5 w-72" />
+        </div>
+
+        <div className="space-y-6">
+          {/* Profile Information Skeleton */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <Skeleton className="h-6 w-44 mb-4" />
+            <div className="space-y-4">
+              {/* Profile Picture & Name */}
+              <div className="flex items-center space-x-4">
+                <Skeleton className="w-16 h-16 rounded-full" />
+                <div>
+                  <Skeleton className="h-6 w-36 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              {/* Contact Info Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center space-x-3 p-3 bg-white rounded border">
+                  <Skeleton className="w-5 h-5" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-12 mb-1" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-white rounded border">
+                  <Skeleton className="w-5 h-5" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Details Skeleton */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <Skeleton className="h-6 w-36 mb-4" />
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex justify-between items-center py-2">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Account Actions Skeleton */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <Skeleton className="h-6 w-36 mb-4" />
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="px-4 py-3 rounded-lg border border-gray-200">
+                  <Skeleton className="h-5 w-48 mb-2" />
+                  <Skeleton className="h-4 w-72" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

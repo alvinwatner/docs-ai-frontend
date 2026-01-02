@@ -7,7 +7,7 @@ import CurrentPlanCard from '@/components/billing/CurrentPlanCard';
 import PlanComparison from '@/components/billing/PlanComparison';
 import UsageMeter from '@/components/billing/UsageMeter';
 import UpgradeForm from '@/components/billing/UpgradeForm';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -63,26 +63,64 @@ export default function BillingPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  if (userLoading || !user) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  // Skeleton loading for user or subscription data
+  if (userLoading || !user || !subscriptionData) {
+    if (error) {
+      return (
+        <div className="p-6 text-center">
+          <p className="text-red-600">Failed to load subscription data</p>
+        </div>
+      );
+    }
 
-  if (error) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-red-600">Failed to load subscription data</p>
-      </div>
-    );
-  }
+      <div className="space-y-0">
+        {/* Current Plan Card Skeleton */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <Skeleton className="h-5 w-24 mb-2" />
+              <Skeleton className="h-8 w-20" />
+            </div>
+            <div className="text-right">
+              <Skeleton className="h-4 w-16 mb-1" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </div>
+        </div>
 
-  if (!subscriptionData) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <LoadingSpinner size="lg" />
+        {/* Usage Statistics Skeleton */}
+        <div className="p-6 border-b border-gray-200">
+          <Skeleton className="h-6 w-36 mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-2 w-full rounded-full" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Plan Comparison Skeleton */}
+        <div className="p-6 border-b border-gray-200">
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="border rounded-lg p-4 space-y-3">
+                <Skeleton className="h-6 w-20 mb-2" />
+                <Skeleton className="h-8 w-24" />
+                <div className="space-y-2 pt-2">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <Skeleton key={j} className="h-4 w-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-10 w-full mt-4" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

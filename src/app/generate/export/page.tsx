@@ -5,15 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@auth0/nextjs-auth0';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Stepper, DOCUMENT_GENERATION_STEPS } from '@/components/ui/stepper';
 import { DocumentPreview } from '@/components/document-preview';
 import {
-  ArrowLeft,
   Download,
   CheckCircle2,
   RotateCcw,
   AlertCircle,
+  Sparkles,
+  FileText,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -333,14 +336,6 @@ function ExportContent() {
     router.push('/dashboard');
   };
 
-  const handleGoBack = () => {
-    if (templateId) {
-      router.push(`/generate/fill?template=${templateId}`);
-    } else {
-      router.push('/templates');
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="bg-background min-h-screen">
@@ -361,10 +356,87 @@ function ExportContent() {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <div className="text-center">
-              <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"></div>
-              <p className="text-muted-foreground">Loading export options...</p>
+          {/* Stepper Skeleton */}
+          <div className="mb-8">
+            <div className="mx-auto flex max-w-2xl justify-between">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Header Skeleton */}
+          <div className="mb-8">
+            <Skeleton className="mb-4 h-9 w-40" />
+            <Skeleton className="mb-2 h-9 w-64" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            {/* Export Options - 2 columns */}
+            <div className="space-y-6 lg:col-span-2">
+              {/* Document Preview Skeleton */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-40" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-[500px] w-full" />
+                </CardContent>
+              </Card>
+
+              {/* Export Options Cards Skeleton */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <Skeleton className="h-6 w-32" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Skeleton className="h-4 w-full" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pt-6 pb-3">
+                    <Skeleton className="h-6 w-44" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Skeleton className="h-4 w-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                    <Skeleton className="h-10 w-full" />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Summary Sidebar Skeleton */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-40" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="mb-1 h-4 w-24" />
+                      <Skeleton className="h-4 w-36" />
+                    </div>
+                  ))}
+                  <div className="border-t pt-4">
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>
@@ -421,28 +493,20 @@ function ExportContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Stepper */}
-        <div className="mb-8">
+      {/* Sticky Stepper */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border py-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Stepper
             currentStep={3}
             steps={DOCUMENT_GENERATION_STEPS}
             className="mx-auto max-w-2xl"
           />
         </div>
+      </div>
 
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={handleGoBack}
-            className="mb-4"
-            disabled={isExporting}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Fill Variables
-          </Button>
-
           <h1 className="text-foreground mb-2 text-3xl font-semibold">
             Export Your Document
           </h1>
@@ -521,15 +585,11 @@ function ExportContent() {
                 </Card>
               )}
 
-              {/* Export Settings */}
-              <Card>              
-                <CardContent className="space-y-6">
-                  {/* Auto-formatting Option */}
-
-
-                  {/* Error Message */}
-                  {exportError && (
-                    <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
+              {/* Error Message */}
+              {exportError && (
+                <Card className="border-destructive/20 bg-destructive/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
                       <AlertCircle className="text-destructive mt-0.5 h-5 w-5" />
                       <div>
                         <h4 className="text-destructive font-medium">
@@ -540,53 +600,102 @@ function ExportContent() {
                         </p>
                       </div>
                     </div>
-                  )}
+                  </CardContent>
+                </Card>
+              )}
 
-                  {/* Action Buttons */}
-                  <div className="space-y-3 pt-4">
-                    {/* Primary Button - Only show if auto-formatting is enabled */}
+              {/* Export Options - Two Card Layout */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {/* Quick Download Card */}
+                <Card className="relative flex flex-col">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="h-5 w-5" />
+                      Quick Download
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col space-y-4">
+                    <p className="text-muted-foreground text-sm">
+                      Download your merged document as-is, without additional
+                      formatting.
+                    </p>
+                    <div className="mt-auto grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={handleDownloadDocx}
+                        disabled={isExporting || !mergedDocumentBlob}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        DOCX
+                      </Button>
+                      <Button
+                        onClick={handleDownloadPdf}
+                        disabled={isExporting || !mergedDocumentBlob}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        PDF
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Auto Formatting Card - Recommended */}
+                <Card className="border-primary/50 bg-primary/5 relative flex flex-col">
+                  {/* Recommended Badge */}
+                  <div className="absolute -top-3 left-4">
+                    <span className="bg-primary text-primary-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium">
+                      <Sparkles className="h-3 w-3" />
+                      Recommended
+                    </span>
+                  </div>
+                  <CardHeader className="pt-6 pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="text-primary h-5 w-5" />
+                      Apply Auto Formatting
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-muted-foreground text-sm">
+                      Fix layout issues, align tables, and normalize spacing
+                      automatically.
+                    </p>
+                    <ul className="text-muted-foreground space-y-1 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="text-primary h-4 w-4" />
+                        Fix table alignment
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="text-primary h-4 w-4" />
+                        Normalize spacing
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="text-primary h-4 w-4" />
+                        Live preview
+                      </li>
+                    </ul>
                     <Button
                       onClick={handleExport}
                       disabled={isExporting || !mergedDocumentBlob}
-                      size="lg"
                       className="flex w-full items-center gap-2"
                     >
                       {isExporting ? (
                         <>
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          Starting formatting...
+                          Starting...
                         </>
                       ) : (
-                        'Apply Formatting & Preview'
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          Continue with Formatting
+                        </>
                       )}
                     </Button>
-
-                    {/* Secondary Buttons - Quick Downloads */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        onClick={handleDownloadPdf}
-                        disabled={isExporting || !mergedDocumentBlob}
-                        variant="outline"
-                        size="lg"
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download PDF
-                      </Button>
-                      <Button
-                        onClick={handleDownloadDocx}
-                        disabled={isExporting || !mergedDocumentBlob}
-                        variant="outline"
-                        size="lg"
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download DOCX
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {/* Summary Sidebar */}

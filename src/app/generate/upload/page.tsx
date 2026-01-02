@@ -215,16 +215,19 @@ function UploadContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Stepper */}
-        <div className="mb-8">
+      {/* Sticky Stepper */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border py-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Stepper
             currentStep={1}
             steps={DOCUMENT_GENERATION_STEPS}
             className="mx-auto max-w-2xl"
           />
         </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <Link
             href="/dashboard"

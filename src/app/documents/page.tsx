@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -162,7 +163,7 @@ function DocumentsContent() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-foreground mb-2">
-            My Documents
+            Generated Documents
           </h1>
           <p className="text-muted-foreground">
             View and manage all your generated documents.
@@ -197,9 +198,34 @@ function DocumentsContent() {
 
         {/* Documents Grid */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your documents...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <Skeleton className="h-5 w-44" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-12" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-9 flex-1" />
+                      <Skeleton className="h-9 w-9" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : filteredDocuments.length === 0 ? (
           <Card>
@@ -211,16 +237,16 @@ function DocumentsContent() {
               <p className="text-muted-foreground mb-6">
                 {searchQuery || filterStatus !== 'all'
                   ? 'Try adjusting your search or filters.'
-                  : 'Create your first document to get started.'
+                  : 'Generate your first document from a template.'
                 }
               </p>
               {!searchQuery && filterStatus === 'all' && (
                 <Link
-                  href="/generate/upload"
+                  href="/templates"
                   className={cn(buttonVariants())}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Document
+                  Generate Your First Document
                 </Link>
               )}
             </CardContent>

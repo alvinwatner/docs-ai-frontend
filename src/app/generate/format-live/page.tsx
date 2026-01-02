@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthGuard, UserMenu } from '@/components/auth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -20,6 +20,50 @@ interface FormattingProgress {
   }>;
   last_updated: unknown;
 }
+
+// Helper function to parse history and extract issues summary
+interface IssuesSummary {
+  totalFixed: number;
+  categories: string[];
+}
+
+const parseIssuesSummary = (history: FormattingProgress['history']): IssuesSummary => {
+  const fixKeywords = ['fixed', 'aligned', 'adjusted', 'corrected', 'normalized', 'formatted', 'resolved'];
+  const categoryKeywords: Record<string, string> = {
+    'table': 'Tables aligned',
+    'spacing': 'Spacing normalized',
+    'margin': 'Margins adjusted',
+    'font': 'Fonts standardized',
+    'paragraph': 'Paragraphs formatted',
+    'layout': 'Layout optimized',
+    'alignment': 'Alignment fixed',
+    'border': 'Borders corrected',
+  };
+
+  let totalFixed = 0;
+  const foundCategories = new Set<string>();
+
+  history.forEach(entry => {
+    const actionLower = entry.action.toLowerCase();
+
+    // Count fixes
+    if (fixKeywords.some(keyword => actionLower.includes(keyword))) {
+      totalFixed++;
+    }
+
+    // Categorize by type
+    Object.entries(categoryKeywords).forEach(([keyword, label]) => {
+      if (actionLower.includes(keyword)) {
+        foundCategories.add(label);
+      }
+    });
+  });
+
+  return {
+    totalFixed,
+    categories: Array.from(foundCategories).slice(0, 3), // Max 3 categories shown
+  };
+};
 
 export default function FormatLivePage() {
   return (
@@ -291,6 +335,36 @@ function FormatLiveContent() {
                     </div>
                   </div>
                 )}
+
+                {/* Issues Summary Card - Show when there's history */}
+                {progress?.history && progress.history.length > 0 && (() => {
+                  const summary = parseIssuesSummary(progress.history);
+                  if (summary.totalFixed > 0 || summary.categories.length > 0) {
+                    return (
+                      <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-foreground">
+                            {summary.totalFixed > 0
+                              ? `${summary.totalFixed} issue${summary.totalFixed !== 1 ? 's' : ''} fixed`
+                              : 'Formatting applied'}
+                          </p>
+                        </div>
+                        {summary.categories.length > 0 && (
+                          <ul className="space-y-1">
+                            {summary.categories.map((category, idx) => (
+                              <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <CheckCircle2 className="h-3 w-3 text-primary" />
+                                {category}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* History Log - Scrollable */}
                 <div className="flex-1 overflow-hidden">
