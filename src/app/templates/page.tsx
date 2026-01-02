@@ -281,11 +281,11 @@ function TemplatesContent() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <Tooltip content={template.name}>
-                        <CardTitle className="text-base flex-1 mr-2 cursor-default">
+                        <CardTitle className="text-base flex-1 mr-2 cursor-default min-w-0 truncate">
                           {truncateFilename(template.name, 25)}
                         </CardTitle>
                       </Tooltip>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"
